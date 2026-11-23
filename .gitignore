@@ -1,0 +1,22 @@
+# Dependencies & build outputs
+node_modules/
+plugins/*/node_modules/
+plugins/*/dist/
+
+# Personal config, tokens & local model path overrides
+config.json
+tts_infer_v5dev.yaml
+src/AGENTS.md
+scripts/stop-legacy-bridge.ps1
+
+# Runtime databases, caches, logs, chats & private/large media assets
+data/
+audio_clip/
+napcat/
+
+# Logs, backups & OS files
+*.log
+*.bak
+*.bak-*
+.DS_Store
+Thumbs.db

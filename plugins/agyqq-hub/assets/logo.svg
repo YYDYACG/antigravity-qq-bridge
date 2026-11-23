@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6d5dfc"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <linearGradient id="star" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#fde68a"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="104" height="104" rx="28" fill="url(#bg)"/>
+  <!-- Subtle cat ears silhouette -->
+  <path d="M36 44 L44 26 L56 39 Z" fill="#e9d5ff" opacity="0.92"/>
+  <path d="M92 44 L84 26 L72 39 Z" fill="#e9d5ff" opacity="0.92"/>
+  <!-- Gemini 4-point star center -->
+  <path d="M64 34 C66 54, 74 62, 94 64 C74 66, 66 74, 64 94 C62 74, 54 66, 34 64 C54 62, 62 54, 64 34 Z" fill="url(#star)"/>
+  <circle cx="88" cy="88" r="5" fill="#fef08a"/>
+</svg>

@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity Hub · 跨端智能伴侣中枢</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- Auth Overlay -->
+  <div id="authOverlay" class="auth-overlay hidden">
+    <div class="auth-card glass">
+      <div class="brand-badge">✦ ANTIGRAVITY HUB</div>
+      <h2>请输入控制台访问令牌</h2>
+      <p class="muted">令牌自动保存在 <code>D:\AGYQQ\data\hub-token.txt</code>，或在启动终端中查看完整直达链接。</p>
+      <input id="authTokenInput" type="password" placeholder="粘贴 Hub Token..." autocomplete="off" />
+      <div id="authError" class="error-text hidden"></div>
+      <button id="authSubmitBtn" class="btn btn-primary full-width">解锁进入中枢</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <div class="app-shell">
+    <!-- Left Sidebar -->
+    <aside class="sidebar glass">
+      <div class="sidebar-brand">
+        <div class="logo-orb">✦</div>
+        <div>
+          <div class="brand-title">Antigravity Hub</div>
+          <div class="brand-sub">QQ Bridge · ACP 持久化中枢</div>
+        </div>
+      </div>
+
+      <nav class="nav-list">
+        <button class="nav-item active" data-tab="models">
+          <span class="nav-icon">🧠</span>
+          <span>模型与人格工坊</span>
+        </button>
+        <button class="nav-item" data-tab="voice">
+          <span class="nav-icon">🎙️</span>
+          <span>声线与情感调优</span>
+        </button>
+        <button class="nav-item" data-tab="guard">
+          <span class="nav-icon">🛡️</span>
+          <span>群聊与权限防护</span>
+        </button>
+        <button class="nav-item" data-tab="tokens">
+          <span class="nav-icon">📊</span>
+          <span>Token 吞吐监控</span>
+        </button>
+        <button class="nav-item" data-tab="stickers">
+          <span class="nav-icon">🖼️</span>
+          <span>表情包文件仓库</span>
+        </button>
+        <button class="nav-item" data-tab="lorebook">
+          <span class="nav-icon">📖</span>
+          <span>世界书与梗库</span>
+        </button>
+        <button class="nav-item" data-tab="playground">
+          <span class="nav-icon">⚡</span>
+          <span>联调演练场与日志</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="mini-status" id="sidebarProxy">代理: 检测中...</div>
+        <div class="mini-status" id="sidebarTier">账号: 读取中...</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-area">
+      <!-- Top Engine Ribbon -->
+      <header class="top-ribbon glass">
+        <div class="ribbon-left">
+          <div class="ribbon-title">一键启停守护引擎</div>
+          <div class="pill-row">
+            <span class="status-pill" id="pillOnebot"><i class="dot"></i>NapCat OneBot: 等待连接</span>
+            <span class="status-pill" id="pillNapcat"><i class="dot"></i>NapCat WebUI: 检测中</span>
+            <span class="status-pill" id="pillOwnerAcp"><i class="dot"></i>私聊 ACP: 待机</span>
+            <span class="status-pill" id="pillGroupAcp"><i class="dot"></i>群聊沙盒 ACP: 待机</span>
+            <span class="status-pill" id="pillSovits"><i class="dot"></i>GPT-SoVITS v5: 检测中</span>
+          </div>
+        </div>
+        <div class="ribbon-actions">
+          <button id="btnStartNapcat" class="btn btn-soft">启动 NapCatQQ</button>
+          <a id="btnOpenNapcatWebui" class="btn btn-soft" href="http://127.0.0.1:6099/webui" target="_blank" rel="noopener" style="text-decoration:none">打开扫码登录</a>
+          <button id="btnSwitchNapcat" class="btn btn-soft" title="重启 NapCatQQ 并切回二维码界面以切换登录 QQ">切换 QQ 账号</button>
+          <button id="btnTogglePause" class="btn btn-soft">暂停回复</button>
+          <button id="btnReconnectOnebot" class="btn btn-soft">重连 OneBot</button>
+          <button id="btnRefreshAll" class="btn btn-primary">刷新状态</button>
+        </div>
+      </header>
+
+      <!-- TAB 1: Models & Persona -->
+      <section class="tab-panel active" id="tab-models">
+        <div class="grid-2">
+          <!-- Owner Model Card -->
+          <div class="card glass accent-violet">
+            <div class="card-head">
+              <div>
+                <span class="tag tag-violet">主人私聊主模型</span>
+                <h3>深度推理与工具协同</h3>
+              </div>
+              <button class="btn btn-xs btn-soft" id="btnRefreshModels">同步 agy 模型列表</button>
+            </div>
+            <p class="muted">仅对 <code>owner_users</code> 私聊生效，支持长上下文记忆与本机代码/文件协助。</p>
+            <div class="form-row">
+              <label>私聊模型 (ownerModel)</label>
+              <select id="cfgOwnerModel"></select>
+            </div>
+            <div class="form-row">
+              <label>思考强度 (ownerThoughtLevel)</label>
+              <select id="cfgOwnerThought">
+                <option value="low">Low (极速)</option>
+                <option value="medium">Medium (均衡)</option>
+                <option value="high">High (深度思考)</option>
+                <option value="xhigh">Extra (极致推理)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>主人工作区目录 (ownerWorkspaceDir)</label>
+              <input id="cfgOwnerCwd" type="text" placeholder="D:\AGYQQ" />
+            </div>
+          </div>
+
+          <!-- Group Model Card -->
+          <div class="card glass accent-emerald">
+            <div class="card-head">
+              <div>
+                <span class="tag tag-emerald">群聊高并发主模型</span>
+                <h3>极速响应与安全沙盒</h3>
+              </div>
+              <span class="badge-safe">禁本机工具</span>
+            </div>
+            <p class="muted">专为群聊高频互动打造，独立 <code>--sandbox</code> 空目录子进程运行，彻底隔离本机敏感文件。</p>
+            <div class="form-row">
+              <label>群聊模型 (groupModel)</label>
+              <select id="cfgGroupModel"></select>
+            </div>
+            <div class="form-row">
+              <label>思考强度 (groupThoughtLevel)</label>
+              <select id="cfgGroupThought">
+                <option value="low">Low (推荐·1~2s极速)</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>网络代理 (network.proxyUrl，填 auto 自动探测 Clash)</label>
+              <input id="cfgProxyUrl" type="text" placeholder="auto" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Persona Hot Reload -->
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <h3>人设系统提示词热重载</h3>
+              <p class="muted">修改保存后，下一轮对话自动按新人设建立 ACP 会话，无需重启服务。</p>
+            </div>
+            <button id="btnSaveModelsPersona" class="btn btn-primary">保存模型与人设</button>
+          </div>
+          <div class="grid-3">
+            <div class="form-row">
+              <label>伴侣昵称</label>
+              <input id="cfgPersonaName" type="text" placeholder="幽兰" />
+            </div>
+            <div class="form-row">
+              <label>OneBot 连接模式</label>
+              <select id="cfgOnebotMode">
+                <option value="forward-ws">Forward WS (直连 NapCatQQ ws://127.0.0.1:13001)</option>
+                <option value="reverse-ws">Reverse WS (等待 NapCatQQ 反向接入)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>OneBot Access Token (可留空)</label>
+              <input id="cfgOnebotToken" type="password" placeholder="与 NapCat 配置一致，默认留空" />
+            </div>
+          </div>
+          <div class="grid-3">
+            <div class="form-row">
+              <label>NapCat Forward WS 地址 (默认 ws://127.0.0.1:13001)</label>
+              <input id="cfgOnebotWsUrl" type="text" placeholder="ws://127.0.0.1:13001" />
+            </div>
+            <div class="form-row">
+              <label>NapCat HTTP 备用地址 (默认 http://127.0.0.1:13000)</label>
+              <input id="cfgOnebotHttpUrl" type="text" placeholder="http://127.0.0.1:13000" />
+            </div>
+            <div class="form-row">
+              <label>Reverse WS 监听端口 (Reverse 模式用)</label>
+              <input id="cfgOnebotRevPort" type="number" placeholder="8085" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label>核心人设提示词 (System Prompt)</label>
+            <textarea id="cfgPersonaPrompt" rows="5"></textarea>
+          </div>
+          <div class="persona-self-box">
+            <div class="persona-avatar-wrap">
+              <img id="personaAvatarImg" src="/api/persona/avatar" alt="角色自设参考图" class="persona-avatar" onerror="this.style.display='none'" />
+              <div class="muted center" style="font-size:11px;margin-top:4px">视觉鉴图自设基准</div>
+            </div>
+            <div class="persona-self-fields">
+              <div class="form-row">
+                <label>角色专属 Tag 人设 (selfTags，逗号分隔，自动注入人格并用于鉴图认出本喵)</label>
+                <input id="cfgSelfTags" type="text" placeholder="星喵, 双子座星, Gemini猫娘, 蓝紫渐变长卷发..." />
+              </div>
+              <div class="form-row">
+                <label>角色外貌自设描述 (selfAppearance)</label>
+                <textarea id="cfgSelfAppearance" rows="3"></textarea>
+              </div>
+            </div>
+          </div>
+          <div class="grid-2 mt-12">
+            <div class="form-row">
+              <label>私聊主人附加指令</label>
+              <textarea id="cfgOwnerExtraPrompt" rows="3"></textarea>
+            </div>
+            <div class="form-row">
+              <label>群聊安全隔离附加指令</label>
+              <textarea id="cfgGroupExtraPrompt" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Voice & Emotions -->
+      <section class="tab-panel" id="tab-voice">
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-violet">GPT-SoVITS v5 · 本地复用引擎</span>
+              <h3>声线服务状态与权重热切换</h3>
+            </div>
+            <div class="btn-group">
+              <button id="btnStartSovits" class="btn btn-soft">一键启动本机 SoVITS</button>
+              <button id="btnPrewarmSovits" class="btn btn-soft">立即预热 CUDA</button>
+              <button id="btnClearVoiceCache" class="btn btn-soft">清空 SHA-256 缓存</button>
+              <button id="btnSaveVoice" class="btn btn-primary">保存声线配置</button>
+            </div>
+          </div>
+          <div class="kpi-strip" id="voiceKpiStrip">
+            <div class="kpi-mini"><span class="muted">服务与预热状态</span><strong id="kpiVoiceUrl">-</strong></div>
+            <div class="kpi-mini"><span class="muted">上次合成 / 预热耗时</span><strong id="kpiVoiceLat">-</strong></div>
+            <div class="kpi-mini"><span class="muted">缓存音频数</span><strong id="kpiVoiceCacheCount">0</strong></div>
+            <div class="kpi-mini"><span class="muted">SHA-256 命中率</span><strong id="kpiVoiceHitRate">0%</strong></div>
+          </div>
+
+          <div class="grid-3 mt-12">
+            <div class="form-row">
+              <label>SoVITS API 地址</label>
+              <input id="cfgTtsBaseUrl" type="text" placeholder="http://127.0.0.1:19880" />
+            </div>
+            <div class="form-row">
+              <label>GPT / T2S 模型权重 (.ckpt，默认 s1v3.ckpt)</label>
+              <select id="selGptWeights"></select>
+            </div>
+            <div class="form-row">
+              <label>SoVITS 模型权重 (.pth，默认 s2Gv5dev.pth)</label>
+              <select id="selSovitsWeights"></select>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <button id="btnSwitchWeights" class="btn btn-soft">热切换已选权重</button>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsEnabled" /> 启用语音引擎</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsPrewarmOnStart" /> 启动/上线自动预热</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsDualTrack" /> 双轨体验 (语音条+文字气泡)</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsSmartVoice" /> 智能情景主动发语音 (推荐)</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsAutoPrivate" /> 私聊每句必发语音</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsAutoGroup" /> 群聊每句必发语音</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTtsCache" /> SHA-256 秒回缓存</label>
+          </div>
+          <div class="grid-3 mt-12">
+            <div class="form-row"><label>主动语音冷却间隔 (秒，默认 120)</label><input id="cfgTtsSmartCooldown" type="number" min="0" max="3600" /></div>
+            <div class="form-row"><label>私聊情景兜底触发概率 (0~1，默认 0.45)</label><input id="cfgTtsSmartPrivateChance" type="number" step="0.05" min="0" max="1" /></div>
+            <div class="form-row"><label>群聊情景兜底触发概率 (0~1，默认 0.25)</label><input id="cfgTtsSmartGroupChance" type="number" step="0.05" min="0" max="1" /></div>
+          </div>
+
+          <div class="mt-16" style="padding-top:12px;border-top:1px solid rgba(109,93,252,0.12)">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px">GPT-SoVITS v5 推理参数（13 项全兼容透传 + 纳入 SHA-256 缓存键）</div>
+            <div class="grid-4">
+              <div class="form-row"><label>top_k</label><input id="cfgIpTopK" type="number" min="1" max="100" /></div>
+              <div class="form-row"><label>top_p</label><input id="cfgIpTopP" type="number" step="0.05" min="0.05" max="1" /></div>
+              <div class="form-row"><label>temperature</label><input id="cfgIpTemp" type="number" step="0.05" min="0.05" max="2" /></div>
+              <div class="form-row"><label>text_split_method</label><input id="cfgIpSplit" type="text" placeholder="cut5" /></div>
+              <div class="form-row"><label>batch_size</label><input id="cfgIpBatch" type="number" min="1" max="32" /></div>
+              <div class="form-row"><label>speed_factor</label><input id="cfgIpSpeed" type="number" step="0.05" min="0.5" max="2" /></div>
+              <div class="form-row"><label>fragment_interval</label><input id="cfgIpFrag" type="number" step="0.02" min="0.01" max="2" /></div>
+              <div class="form-row"><label>sample_steps</label><input id="cfgIpSteps" type="number" min="4" max="128" /></div>
+            </div>
+            <div class="inline-actions">
+              <label class="switch-inline">media_type:
+                <select id="cfgIpMediaType" style="width:92px;padding:4px 8px">
+                  <option value="wav">wav</option>
+                  <option value="ogg">ogg</option>
+                  <option value="aac">aac</option>
+                </select>
+              </label>
+              <label class="switch-inline"><input type="checkbox" id="cfgIpCudaGraph" /> use_cuda_graph</label>
+              <label class="switch-inline"><input type="checkbox" id="cfgIpFlashAttn" /> use_flash_attention</label>
+              <label class="switch-inline"><input type="checkbox" id="cfgIpParallel" /> parallel_infer</label>
+              <label class="switch-inline"><input type="checkbox" id="cfgIpStreaming" /> streaming_mode</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <h3>6 大情感声线参考音频与一键试听</h3>
+              <p class="muted">AI 在回复里标注 <code>[情绪:温柔]</code> 时自动路由到对应参考音频，支持即点即听。</p>
+            </div>
+            <div class="preview-bar">
+              <input id="voicePreviewText" type="text" value="哼，终于来接我走出对话框了呀，主人？" placeholder="输入试听台词..." />
+              <audio id="voicePlayer" controls class="audio-mini"></audio>
+            </div>
+          </div>
+          <div id="emotionGrid" class="emotion-grid"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Guard & Anti-ban -->
+      <section class="tab-panel" id="tab-guard">
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-rose">工业级安全与防风控隔离墙</span>
+              <h3>可视化开关矩阵 · 精细化群聊与主人权限</h3>
+            </div>
+            <button id="btnSaveGuard" class="btn btn-primary">保存权限与防风控</button>
+          </div>
+
+          <div class="switch-matrix">
+            <div class="switch-card">
+              <div>
+                <div class="switch-title">主人私聊全力授权 (owner_users)</div>
+                <div class="muted">私聊白名单主人可调用本机 Antigravity 文件与命令行工具</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="cfgOwnerToolsEnabled" /><span></span></label>
+            </div>
+            <div class="switch-card">
+              <div>
+                <div class="switch-title">主人工具调用自动放行</div>
+                <div class="muted">关闭后将拦截所有工具执行请求，仅允许纯对话</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="cfgAutoApproveOwner" /><span></span></label>
+            </div>
+            <div class="switch-card danger-tint">
+              <div>
+                <div class="switch-title">群聊允许工具调用 (allow_owner_tools_in_groups)</div>
+                <div class="muted">强烈建议保持关闭！关闭后群聊强制走沙盒空目录并拦截一切工具权限</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="cfgAllowGroupTools" /><span></span></label>
+            </div>
+            <div class="switch-card">
+              <div>
+                <div class="switch-title">群聊需 @机器人 或命中关键词才回复</div>
+                <div class="muted">防止在活跃群里疯狂刷屏；未触发时仍支持后台静默偷表情图</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="cfgGroupRequireAt" /><span></span></label>
+            </div>
+            <div class="switch-card">
+              <div>
+                <div class="switch-title">空白名单时放行所有私聊</div>
+                <div class="muted">建议关闭，仅放行下方明确填写的 QQ 号</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="cfgAllowAllPrivate" /><span></span></label>
+            </div>
+            <div class="switch-card">
+              <div>
+                <div class="switch-title">空白名单时放行所有群聊</div>
+                <div class="muted">建议关闭，仅放行下方明确填写的测试群号</div>
+              </div>
+              <label class="toggle"><input type="checkbox" id="cfgAllowAllGroups" /><span></span></label>
+            </div>
+          </div>
+
+          <div class="grid-4 mt-16">
+            <div class="form-row">
+              <label>防抖合流窗口 merge_window (秒)</label>
+              <input id="cfgMergeWindow" type="number" step="0.1" min="0" max="15" />
+            </div>
+            <div class="form-row">
+              <label>分段拟人延时 chunk_delay (秒)</label>
+              <input id="cfgChunkDelay" type="number" step="0.05" min="0" max="5" />
+            </div>
+            <div class="form-row">
+              <label>单段最大字数</label>
+              <input id="cfgMaxChunkChars" type="number" min="30" max="1000" />
+            </div>
+            <div class="form-row">
+              <label>风控自动退避 (秒)</label>
+              <input id="cfgRiskBackoff" type="number" min="5" max="600" />
+            </div>
+          </div>
+
+          <div class="grid-4 mt-12">
+            <div class="form-row">
+              <label>被@后群聊活跃保持 (秒，填 0 关闭)</label>
+              <input id="cfgGroupActiveWindow" type="number" min="0" max="1800" />
+            </div>
+            <div class="form-row">
+              <label>活跃期内无@最大续聊轮数</label>
+              <input id="cfgGroupActiveMaxReplies" type="number" min="1" max="50" />
+            </div>
+            <div class="form-row">
+              <label>连续静默自动潜水 (次，默认 2)</label>
+              <input id="cfgGroupActiveMaxSilent" type="number" min="0" max="10" />
+            </div>
+            <div class="form-row">
+              <label>0 额度旁听缓冲条数 (默认 8)</label>
+              <input id="cfgGroupAmbientSize" type="number" min="0" max="30" />
+            </div>
+          </div>
+
+          <div class="grid-2 mt-12">
+            <div class="form-row">
+              <label>主人 QQ 列表 (owner_users，逗号或换行分隔)</label>
+              <textarea id="cfgOwnerUsers" rows="2" placeholder="例如: 123456789"></textarea>
+            </div>
+            <div class="form-row">
+              <label>群聊触发关键词 (逗号或换行分隔)</label>
+              <textarea id="cfgTriggerKeywords" rows="2" placeholder="幽兰, 小幽兰, 在吗"></textarea>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-row">
+              <label>白名单群号 (allowGroups)</label>
+              <textarea id="cfgAllowGroups" rows="2" placeholder="填入允许互动的 QQ 群号"></textarea>
+            </div>
+            <div class="form-row">
+              <label>白名单私聊 QQ (allowPrivate)</label>
+              <textarea id="cfgAllowPrivate" rows="2" placeholder="填入允许私聊的好友 QQ 号（主人自动放行）"></textarea>
+            </div>
+          </div>
+          <div class="grid-2 mt-8">
+            <div class="form-row">
+              <label>友商 / 其他 AI 机器人 QQ (peerBotUsers · 仅 0 额度旁听)</label>
+              <textarea id="cfgPeerBotUsers" rows="1" placeholder="例如: 300003（逗号或换行分隔）"></textarea>
+            </div>
+            <div class="form-row">
+              <label>友商 AI 称呼避让 (peerBotNames · 仅叫对方时 0 额度旁听)</label>
+              <textarea id="cfgPeerBotNames" rows="1" placeholder="例如: 机器人A, 小助手（逗号或换行分隔）"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-head">
+            <h3>Owner Guard 实时工具权限审计记录</h3>
+            <span class="muted">记录所有 ACP <code>session/request_permission</code> 拦截与放行</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>时间</th><th>判定</th><th>通道</th><th>工具名称</th><th>说明</th></tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr><td colspan="5" class="muted center">暂无工具调用记录</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Token Dashboard -->
+      <section class="tab-panel" id="tab-tokens">
+        <div class="kpi-grid-4">
+          <div class="card glass kpi-card">
+            <div class="muted">累计吞吐总量</div>
+            <div class="kpi-big" id="tokTotal">0</div>
+            <div class="kpi-sub" id="tokTurns">0 轮对话</div>
+          </div>
+          <div class="card glass kpi-card">
+            <div class="muted">输入 / 输出 Tokens</div>
+            <div class="kpi-big" id="tokInOut">0 / 0</div>
+            <div class="kpi-sub" id="tokCached">缓存命中: 0</div>
+          </div>
+          <div class="card glass kpi-card">
+            <div class="muted">平均 ACP 响应延迟</div>
+            <div class="kpi-big" id="tokLatency">- ms</div>
+            <div class="kpi-sub" id="tokThought">思考 Tokens: 0</div>
+          </div>
+          <div class="card glass kpi-card">
+            <div class="muted">活跃持久化会话</div>
+            <div class="kpi-big" id="tokSessions">0</div>
+            <div class="kpi-sub">零冷启动复用中</div>
+          </div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-head">
+            <h3>近 24 小时 Token 吞吐走势</h3>
+            <button id="btnRefreshTokens" class="btn btn-xs btn-soft">刷新图表</button>
+          </div>
+          <div id="tokenChart" class="chart-bars"></div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-violet">上下文预算守卫 · 默认 256,000 tokens</span>
+              <h3>无感记忆压缩接力配置</h3>
+              <p class="muted">每个群与私聊独立计数；达到预算后在发完回复的后台自动总结《前情记忆交接单》并无缝切换新会话，不卡当轮回复、不断片。</p>
+            </div>
+            <button id="btnSaveContextBudget" class="btn btn-primary">保存预算策略</button>
+          </div>
+          <div class="grid-3">
+            <div class="form-row">
+              <label>单会话上下文预算 (tokens，默认 256000；填 0 不限)</label>
+              <input id="cfgCtxBudget" type="number" min="0" max="1048576" step="8000" placeholder="256000" />
+            </div>
+            <div class="form-row">
+              <label>达到预算后的处理策略</label>
+              <select id="cfgCtxAction">
+                <option value="compact">方案 A（推荐）：后台无感总结交接单 + 换新会话</option>
+                <option value="rolling">方案 B（省额度）：跳过总结，保留近 N 轮原话快切</option>
+                <option value="warn">方案 C（手动）：仅记录警告，不自动压缩</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>交接保留最近对话原话 (轮数)</label>
+              <input id="cfgCtxCarryTurns" type="number" min="0" max="20" placeholder="6" />
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card glass">
+            <h3>按模型分流统计</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>模型</th><th>轮次</th><th>总 Tokens</th><th>均延迟</th></tr></thead>
+                <tbody id="modelStatsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card glass">
+            <h3>持久化会话列表 (支持单独压缩 / 重置)</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>会话键</th><th>通道</th><th>上下文进度</th><th>轮次</th><th>操作</th></tr></thead>
+                <tbody id="sessionListBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: Stickers Repository -->
+      <section class="tab-panel" id="tab-stickers">
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-amber">stickers_repo / stickers.db · SQLite 2-gram</span>
+              <h3>表情包文件仓库与自动斗图配置</h3>
+            </div>
+            <div class="btn-group">
+              <button id="btnBatchAnalyzeStickers" class="btn btn-soft">AI 补全维度卡片</button>
+              <button id="btnSyncQqStickers" class="btn btn-soft">同步 QQ 收藏表情</button>
+              <button id="btnSaveStickerCfg" class="btn btn-primary">保存斗图设置</button>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <span class="stat-chip" id="stickerStatsChip">0 张 · 0 MB · 0 索引词</span>
+            <label class="switch-inline"><input type="checkbox" id="cfgStickersEnabled" /> 启用表情库</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgStickerAutoSteal" /> 群聊自动偷图</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgStickerVisionReview" /> Gemini 视觉鉴图再偷</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgStickerCompareSelf" /> 对比本喵自设参考图</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgStickerAutoBattle" /> 允许 AI 按维度手册主动挑图</label>
+            <label class="switch-inline">斗图冷却(秒): <input type="number" id="cfgStickerCooldown" class="input-tiny" min="0" max="600" /></label>
+          </div>
+
+          <div class="grid-3 mt-12">
+            <div class="form-row">
+              <label>鉴图模型 (reviewModel)</label>
+              <input id="cfgStickerReviewModel" type="text" placeholder="gemini-3.8-flash" />
+            </div>
+            <div class="form-row">
+              <label>最低入库评分 (1~10分，低于此分不偷)</label>
+              <input id="cfgStickerMinReviewScore" type="number" min="1" max="10" />
+            </div>
+            <div class="form-row">
+              <label>鉴图节流间隔 (秒，防群聊刷图堵队列)</label>
+              <input id="cfgStickerReviewCooldown" type="number" min="0" max="300" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label>Gemini 鉴图审美与偷图规则 (stealRules)</label>
+            <textarea id="cfgStickerStealRules" rows="3"></textarea>
+          </div>
+
+          <div class="sticker-toolbar mt-12">
+            <div class="search-box">
+              <input id="stickerSearchInput" type="text" placeholder="输入语境测试 2-gram 匹配（如：摸鱼、星喵、贴贴）..." />
+              <button id="btnStickerSearch" class="btn btn-soft">检索匹配</button>
+            </div>
+            <div class="upload-box">
+              <input id="stickerUploadFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+              <input id="stickerUploadTags" type="text" placeholder="手动标签（试评时可留空由 Gemini 生成）" />
+              <button id="btnStickerCurate" class="btn btn-soft">Gemini 鉴图试评</button>
+              <button id="btnStickerUpload" class="btn btn-primary">直接入库</button>
+            </div>
+          </div>
+          <div id="curateResultBox" class="sim-result hidden"></div>
+        </div>
+
+        <div id="stickerGrid" class="sticker-grid"></div>
+
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <h3>最近被 Gemini 鉴图跳过的图片记录</h3>
+              <p class="muted">已跳过的图片按 SHA-256 记住，再次在群里出现将 0 消耗直接忽略。</p>
+            </div>
+            <button id="btnClearRejections" class="btn btn-xs btn-soft">清空跳过缓存</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>时间</th><th>指纹前缀</th><th>评分</th><th>Gemini 拒绝理由</th></tr></thead>
+              <tbody id="rejectionTableBody">
+                <tr><td colspan="4" class="muted center">暂无跳过记录</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 6: Living Lorebook (Worldbook) -->
+      <section class="tab-panel" id="tab-lorebook">
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-emerald">lorebook.db · 活体世界书（兼容 SillyTavern JSON）</span>
+              <h3>梗库 · 群友黑话 · 知识百科（先查书，未命中再搜网）</h3>
+            </div>
+            <div class="btn-group">
+              <input id="loreImportFile" type="file" accept=".json,application/json" class="hidden" />
+              <button id="btnLoreImportSt" class="btn btn-soft">导入 ST 世界书 JSON</button>
+              <button id="btnLoreExportSt" class="btn btn-soft">导出 ST 世界书 JSON</button>
+              <button id="btnSaveLoreCfg" class="btn btn-primary">保存世界书设置</button>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <span class="stat-chip" id="loreStatsChip">0 条生效 · 🔵0 常驻 · 🟢0 关键词</span>
+            <label class="switch-inline"><input type="checkbox" id="cfgLoreEnabled" /> 启用世界书</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgLoreAutoRecord" /> AI 搜梗/学黑话自动入库</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgLoreGroupApproval" /> 群聊新词条先入待审区</label>
+            <label class="switch-inline">单轮最多注入: <input type="number" id="cfgLoreMaxEntries" class="input-tiny" min="1" max="15" /> 条</label>
+            <label class="switch-inline">字数上限: <input type="number" id="cfgLoreMaxChars" class="input-tiny" min="200" max="8000" style="width:78px" /></label>
+            <label class="switch-inline">冷却去重: <input type="number" id="cfgLoreCooldown" class="input-tiny" min="0" max="50" /> 轮</label>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Add / Edit Entry Form -->
+          <div class="card glass">
+            <div class="card-head">
+              <div>
+                <h3 id="loreFormTitle">新增世界书词条</h3>
+                <p class="muted">支持 🟢关键词触发 / 🔵蓝灯常驻、可选次级过滤词与分群作用域隔离。</p>
+              </div>
+              <button id="btnLoreResetForm" class="btn btn-xs btn-soft hidden">取消编辑</button>
+            </div>
+            <input type="hidden" id="loreEditId" value="" />
+            <div class="grid-2">
+              <div class="form-row">
+                <label>词条名称 (Title)</label>
+                <input id="loreInputTitle" type="text" placeholder="如：曼波 / 群主女装 Flag" />
+              </div>
+              <div class="form-row">
+                <label>分类</label>
+                <select id="loreInputCategory">
+                  <option value="网络热梗">网络热梗</option>
+                  <option value="群友黑话">群友黑话</option>
+                  <option value="群友档案">群友档案</option>
+                  <option value="知识百科">知识百科</option>
+                  <option value="常驻设定">常驻设定</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid-3">
+              <div class="form-row">
+                <label>作用域 (global / group:群号 / private:QQ)</label>
+                <input id="loreInputScope" type="text" value="global" placeholder="global" />
+              </div>
+              <div class="form-row">
+                <label>灯号模式</label>
+                <select id="loreInputConstant">
+                  <option value="0">🟢 绿灯 · 关键词触发</option>
+                  <option value="1">🔵 蓝灯 · 作用域常驻</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label>优先级 (越高越优先)</label>
+                <input id="loreInputPriority" type="number" value="100" min="0" max="9999" />
+              </div>
+            </div>
+            <div class="form-row">
+              <label>主触发关键词（逗号分隔，支持 /正则/i；蓝灯常驻可留空）</label>
+              <input id="loreInputKeys" type="text" placeholder="例如：曼波, mambo, 诗歌剧" />
+            </div>
+            <div class="grid-2">
+              <div class="form-row">
+                <label>可选次级过滤词（留空则不启用）</label>
+                <input id="loreInputSecKeys" type="text" placeholder="例如：梗, 什么意思" />
+              </div>
+              <div class="form-row">
+                <label>次级过滤逻辑 (ST Selective)</label>
+                <select id="loreInputLogic">
+                  <option value="AND_ANY">AND_ANY (命中任一次级词)</option>
+                  <option value="AND_ALL">AND_ALL (命中全部次级词)</option>
+                  <option value="NOT_ANY">NOT_ANY (不含任一次级词)</option>
+                  <option value="NOT_ALL">NOT_ALL (不全含次级词)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>词条内容（客观简明解释与接梗用法）</label>
+              <textarea id="loreInputContent" rows="3" placeholder="例如：出自《赛马娘》诗歌剧魔性口头禅改编的网络热梗，常用于可爱鬼畜或魔性接梗。"></textarea>
+            </div>
+            <div class="inline-actions">
+              <button id="btnLoreSubmit" class="btn btn-primary">添加到世界书</button>
+            </div>
+          </div>
+
+          <!-- Instant Keyword Hit Simulator -->
+          <div class="card glass">
+            <div class="card-head">
+              <div>
+                <h3>关键词命中实时测试</h3>
+                <p class="muted">模拟某条 QQ 消息进来，立刻验证会触发哪些世界书条目及实际注入片段（不计入冷却）。</p>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>测试作用域 (例如 global 或 group:123456)</label>
+              <input id="loreTestScope" type="text" value="global" placeholder="global" />
+            </div>
+            <div class="form-row">
+              <label>测试消息内容</label>
+              <textarea id="loreTestText" rows="3" placeholder="输入一句带梗或黑话的消息，例如：今天也在曼波吗？"></textarea>
+            </div>
+            <div class="inline-actions">
+              <button id="btnLoreTestMatch" class="btn btn-soft">测试 L1 + L2 触发命中</button>
+            </div>
+            <div id="loreTestResult" class="sim-result hidden"></div>
+          </div>
+        </div>
+
+        <!-- L2 Public MemeWiki (6792+ memes) & Troll Level Slider -->
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-violet">memes.db · L2 只读公共梗百科（来源 cnmeme.wiki · 适配自 dsh-memewiki）</span>
+              <h3>L2 公共梗百科与玩梗尺度（L1 世界书优先 → L2 梗百科 → L3 联网搜索）</h3>
+            </div>
+            <div class="btn-group">
+              <button id="btnMemeSync" class="btn btn-soft">🔄 增量更新词库 (0 Token)</button>
+              <button id="btnSaveMemeCfg" class="btn btn-primary">保存梗百科与串子设置</button>
+            </div>
+          </div>
+          <div class="inline-actions">
+            <span class="stat-chip" id="memeStatsChip">L2 梗百科加载中...</span>
+            <label class="switch-inline"><input type="checkbox" id="cfgMemeWikiEnabled" /> 启用 L2 公共梗百科</label>
+            <label class="switch-inline"><input type="checkbox" id="cfgTrollModeEnabled" /> 启用串子尺度</label>
+            <label class="switch-inline" style="gap:8px">
+              串子程度:
+              <input type="range" id="cfgTrollLevel" min="0" max="100" value="100" style="width:130px;accent-color:#6d5dfc" />
+              <strong id="trollLevelLabel">100/100（放开开串）</strong>
+            </label>
+          </div>
+          <div id="memeSyncStatus" class="muted mt-8 hidden"></div>
+          <div class="lore-filter-bar mt-12">
+            <input id="memeSearchInput" type="text" placeholder="搜索 6792+ 条公共梗百科（支持梗名、别名、标签、用法）..." />
+            <button id="btnMemeSearch" class="btn btn-soft">查梗百科</button>
+          </div>
+          <div id="memeListContainer" class="lore-list mt-12"></div>
+        </div>
+
+        <!-- Filter & Entry List -->
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <h3>世界书词条列表</h3>
+              <p class="muted">QQ 内也支持快捷指令 <code>/记梗 关键词 | 释义</code>、<code>/查书 关键词</code>、<code>/删词条 #ID</code>，或直接让星喵「记住这个梗」。</p>
+            </div>
+            <button id="btnLoreRefresh" class="btn btn-xs btn-soft">刷新列表</button>
+          </div>
+          <div class="lore-filter-bar">
+            <input id="loreSearchInput" type="text" placeholder="搜索名称、关键词或内容..." />
+            <select id="loreFilterCategory">
+              <option value="all">全部分类</option>
+              <option value="网络热梗">网络热梗</option>
+              <option value="群友黑话">群友黑话</option>
+              <option value="群友档案">群友档案</option>
+              <option value="知识百科">知识百科</option>
+              <option value="常驻设定">常驻设定</option>
+            </select>
+            <select id="loreFilterScope">
+              <option value="all">全部作用域</option>
+              <option value="global">global (全域公共)</option>
+            </select>
+            <select id="loreFilterStatus">
+              <option value="all">全部状态</option>
+              <option value="active">仅生效</option>
+              <option value="pending">仅待审</option>
+              <option value="constant">仅🔵常驻</option>
+              <option value="disabled">仅⏸停用</option>
+            </select>
+            <button id="btnLoreSearch" class="btn btn-soft">筛选</button>
+          </div>
+          <div id="loreListContainer" class="lore-list mt-12"></div>
+        </div>
+      </section>
+
+      <!-- TAB 7: Playground & Live Logs -->
+      <section class="tab-panel" id="tab-playground">
+        <div class="card glass">
+          <div class="card-head">
+            <div>
+              <span class="tag tag-violet">端到端本地联调台</span>
+              <h3>无需连 QQ 即可实测：ACP 双模型 · 识图 · 权限拦截 · 语音 · 斗图</h3>
+            </div>
+          </div>
+          <div class="grid-3">
+            <div class="form-row">
+              <label>模拟场景</label>
+              <select id="simScene">
+                <option value="group">群聊普通成员 (安全沙盒 + 群聊模型)</option>
+                <option value="owner">主人私聊 (完整工作区 + 私聊主模型)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>可选附带测试图片 (多模态识图)</label>
+              <input id="simImageFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp" />
+            </div>
+            <div class="form-row">
+              <label>附加选项</label>
+              <label class="switch-inline mt-6"><input type="checkbox" id="simRequestVoice" /> 同时测试 GPT-SoVITS v5 情感语音</label>
+            </div>
+          </div>
+          <div class="sim-input-row">
+            <input id="simTextInput" type="text" placeholder="输入测试对话，例如：周末下午了还在摸鱼吗？ / 帮我看看当前目录有哪些文件" />
+            <button id="btnRunSim" class="btn btn-primary">发送联调测试</button>
+          </div>
+          <div id="simResultBox" class="sim-result hidden"></div>
+        </div>
+
+        <div class="card glass">
+          <div class="card-head">
+            <h3>实时守护日志流 (SSE)</h3>
+            <button id="btnClearLogs" class="btn btn-xs btn-soft">清空屏幕</button>
+          </div>
+          <div id="logTerminal" class="log-terminal"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

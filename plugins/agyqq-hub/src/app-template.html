@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity Hub</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--color-background-primary, #f6f6fb);
+      color: var(--color-text-primary, #1f2235);
+      font-family: var(--font-sans, "Segoe UI", system-ui, -apple-system, sans-serif);
+    }
+    .hidden { display: none !important; }
+    .center-wrap {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 480px;
+      width: 100%;
+      background: var(--color-background-secondary, #ffffff);
+      border: 1px solid var(--color-border-primary, rgba(109, 93, 252, 0.2));
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 12px 36px rgba(24, 24, 58, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      align-self: flex-start;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #6d5dfc;
+      background: rgba(109, 93, 252, 0.12);
+    }
+    h2 { font-size: 19px; font-weight: 700; }
+    p { font-size: 13.5px; line-height: 1.6; color: var(--color-text-secondary, #5b6078); }
+    .svc-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .svc-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: rgba(148, 163, 184, 0.14);
+      color: var(--color-text-secondary, #475569);
+    }
+    .svc-pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+    .svc-pill.ok { background: rgba(16, 185, 129, 0.12); color: #047857; }
+    .svc-pill.ok .dot { background: #10b981; }
+    .svc-pill.boot { background: rgba(245, 158, 11, 0.14); color: #b45309; }
+    .svc-pill.boot .dot { background: #f59e0b; }
+    .svc-pill.off { background: rgba(244, 63, 94, 0.1); color: #be123c; }
+    .svc-pill.off .dot { background: #f43f5e; }
+    .err {
+      font-size: 12px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      color: var(--color-text-danger, #be123c);
+      background: var(--color-background-danger, rgba(244, 63, 94, 0.1));
+      word-break: break-all;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .btn {
+      border: 1px solid var(--color-border-primary, rgba(109, 93, 252, 0.22));
+      background: var(--color-background-tertiary, #f3f2ff);
+      color: var(--color-text-primary, #2b2754);
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.55; cursor: wait; }
+    .btn-primary {
+      background: linear-gradient(135deg, #6d5dfc, #8b5cf6);
+      color: #ffffff;
+      border-color: transparent;
+    }
+    .frame-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    #hubFrame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #f6f6fb;
+    }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 48px;
+      transform: translateX(-50%);
+      max-width: min(92vw, 560px);
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.92);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.24);
+      z-index: 30;
+      pointer-events: none;
+      text-align: center;
+    }
+    .float-tools {
+      position: fixed;
+      right: 12px;
+      bottom: 12px;
+      display: flex;
+      gap: 6px;
+      z-index: 20;
+      opacity: 0.62;
+      transition: opacity 0.18s ease;
+    }
+    .float-tools:hover { opacity: 1; }
+    .float-btn {
+      border: 1px solid rgba(109, 93, 252, 0.25);
+      background: rgba(255, 255, 255, 0.94);
+      color: #3b3670;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(24, 24, 58, 0.12);
+    }
+    .float-btn:disabled { opacity: 0.6; cursor: wait; }
+  </style>
+</head>
+<body>
+  <div id="viewLoading" class="center-wrap">
+    <div class="card">
+      <span class="badge">✦ ANTIGRAVITY HUB</span>
+      <h2 id="loadingTitle">正在检测星喵全套服务...</h2>
+      <p id="loadingDesc">自动检查 Bridge、NapCatQQ 与 GPT-SoVITS v5 状态，未启动的服务将自动后台拉起。</p>
+      <div id="loadingServices" class="svc-row"></div>
+    </div>
+  </div>
+
+  <div id="viewOffline" class="center-wrap hidden">
+    <div class="card">
+      <span class="badge">✦ ANTIGRAVITY HUB · 待启动</span>
+      <h2>Antigravity Hub 尚未就绪</h2>
+      <p id="offlineSub">本地服务当前未响应，可点击下方按钮一键检测并拉起缺失服务。</p>
+      <div id="offlineServices" class="svc-row"></div>
+      <div id="offlineErr" class="err hidden"></div>
+      <div class="btn-row">
+        <button id="btnStartHub" class="btn btn-primary">🚀 一键拉起全套服务</button>
+        <button id="btnRecheck" class="btn">🔄 重新检测</button>
+        <button id="btnOpenBrowserOffline" class="btn">↗ 浏览器打开</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="viewFrameWrap" class="frame-wrap hidden">
+    <iframe id="hubFrame" title="Antigravity Hub" allow="autoplay; clipboard-read; clipboard-write"></iframe>
+    <div id="hubToast" class="toast hidden"></div>
+    <div class="float-tools">
+      <button id="btnFloatEnsure" class="float-btn" title="检测并自动拉起未运行的 NapCatQQ / SoVITS / Bridge">🚀 检测拉起</button>
+      <button id="btnFloatReload" class="float-btn" title="刷新 Hub 画面">🔄 刷新</button>
+      <button id="btnFloatPopout" class="float-btn" title="在系统浏览器中打开">↗ 浏览器</button>
+    </div>
+  </div>
+
+  <script>/*__INLINE_APP_BUNDLE__*/</script>
+</body>
+</html>

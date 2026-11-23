@@ -1,0 +1,21 @@
+{
+  "name": "antigravity-qq-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Antigravity QQ Bridge - Persistent agy acp --stdio bridge with OneBot v11 anti-ban, Owner Guard, GPT-SoVITS v5 6-emotion TTS cache, SQLite 2-gram stickers, and Antigravity Hub WebUI.",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test tests/owner-guard.test.mjs tests/merge-and-rate.test.mjs tests/sticker-2gram.test.mjs tests/lorebook.test.mjs tests/memewiki.test.mjs tests/context-compact.test.mjs tests/tts-cache.test.mjs tests/onebot-parser.test.mjs tests/bilibili-resolver.test.mjs tests/vision-gif.test.mjs tests/hub-and-onebot.test.mjs",
+    "test:e2e": "node --test tests/acp-e2e.test.mjs",
+    "test:all": "npm test && npm run test:e2e",
+    "probe:acp": "node scripts/probe-acp.mjs",
+    "probe:tts": "node scripts/probe-tts.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}

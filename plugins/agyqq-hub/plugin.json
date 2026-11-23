@@ -1,0 +1,12 @@
+{
+  "name": "agyqq-hub",
+  "displayName": "Antigravity Hub",
+  "version": "1.2.1",
+  "description": "Antigravity QQ Bridge 侧边栏控制台：点击自动检测并拉起未运行的 NapCatQQ、GPT-SoVITS v5 与 Bridge 全套守护服务，一站式管理人格、情感声线、表情库与活体世界书。",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "打开 Antigravity Hub 查看伴侣当前在线状态",
+    "在 Antigravity Hub 中测试情感声线与世界书命中",
+    "检查 256K 上下文预算与 Token 吞吐"
+  ]
+}
