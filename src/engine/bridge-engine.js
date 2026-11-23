@@ -26,6 +26,17 @@ import { MemeWikiStore } from '../lorebook/memewiki-store.js';
 import { TokenStore } from '../metrics/token-store.js';
 import path from 'node:path';
 
+const AMBIENT_TTL_MS = 6 * 60 * 60 * 1000;
+const BACKREF_VISUAL_CUE_RE =
+  /(?:上面|前面|刚才|刚刚|这张|那张|这图|那图|这俩|那俩|什么梗|啥梗|什么意思|啥意思|怎么看|啥情况|什么情况|看不懂|解释一下|讲讲|说说|谁呀|哪位|他|她|他们|她们)/;
+
+function formatAmbientClock(ts) {
+  const d = new Date(Number(ts) || Date.now());
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 export class BridgeEngine extends EventEmitter {
   constructor({ rootDir, configStore }) {
     super();
@@ -294,8 +305,8 @@ export class BridgeEngine extends EventEmitter {
     if (maxSize <= 0) return;
     const text = String(msg.text || '').trim();
     if (!text && !msg.images?.length && !msg.forwards?.length) return;
-    const now = Date.now();
-    const arr = (this.groupAmbientBuffer.get(msg.groupId) || []).filter((item) => now - item.ts < 15 * 60 * 1000);
+    const now = Number(msg.timestamp) || Date.now();
+    const arr = (this.groupAmbientBuffer.get(msg.groupId) || []).filter((item) => Date.now() - item.ts < AMBIENT_TTL_MS);
     arr.push({
       senderName: msg.senderName || msg.userId || '群友',
       userId: msg.userId,
@@ -316,7 +327,7 @@ export class BridgeEngine extends EventEmitter {
     const arr = this.groupAmbientBuffer.get(groupId) || [];
     this.groupAmbientBuffer.delete(groupId);
     const now = Date.now();
-    return arr.filter((item) => now - item.ts < 15 * 60 * 1000);
+    return arr.filter((item) => now - item.ts < AMBIENT_TTL_MS);
   }
 
   async _handleIncomingMessage(msg) {
@@ -930,9 +941,11 @@ export class BridgeEngine extends EventEmitter {
     const ambient =
       last.messageType === 'group' && last.groupId ? this._drainAmbientGroupMessages(last.groupId) : [];
 
-    // If current turn has no images, carry recent ambient image(s) (normal photos, GIFs, or card covers)
-    // Priority: same sender within 90s (up to 2 images in chronological order), else latest ambient entry within 60s
+    // If current turn has no images, carry recent ambient image(s) (normal photos, GIFs, or card covers):
+    // 1. Always: same sender within 90s (up to 2 images), or latest ambient entry within 60s
+    // 2. Back-reference cue (e.g. "他在玩什么梗 / 上面那张图 / 怎么看"): carry latest 1~2 images from the last 3 ambient messages (up to 6h)
     const nowTs = Date.now();
+    const hasBackRefCue = BACKREF_VISUAL_CUE_RE.test(batch.text || '');
     const ambientImageTagMap = new Map();
     if (!batch.images.length && !extraImages.length && ambient.length) {
       const getAmbientImgs = (m) => (Array.isArray(m.images) && m.images.length ? m.images : m.cardImages || []);
@@ -945,6 +958,12 @@ export class BridgeEngine extends EventEmitter {
         if (latest && nowTs - latest.ts <= 60000 && getAmbientImgs(latest).length > 0) {
           chosenSources = [latest];
         }
+      }
+      if (!chosenSources.length && hasBackRefCue) {
+        const tailWithImages = ambient
+          .slice(-3)
+          .filter((m) => nowTs - m.ts < AMBIENT_TTL_MS && getAmbientImgs(m).length > 0);
+        chosenSources = tailWithImages.slice(-2);
       }
       const carriedCountBefore = extraImages.length;
       for (const src of chosenSources) {
@@ -966,7 +985,7 @@ export class BridgeEngine extends EventEmitter {
         this._log(
           'info',
           'vision',
-          `补带近期旁听图片 (${batch.sessionKey}): ${extraImages.length - carriedCountBefore} 张`
+          `补带近期旁听图片 (${batch.sessionKey}): ${extraImages.length - carriedCountBefore} 张${hasBackRefCue ? ' (回指触发)' : ''}`
         );
       }
     }
@@ -994,13 +1013,14 @@ export class BridgeEngine extends EventEmitter {
       ...quotedForwards
     ];
     if (!forwardRefs.length && ambient.length) {
+      const fwdWindowMs = hasBackRefCue ? AMBIENT_TTL_MS : 90000;
       const recentFwd = [...ambient]
         .reverse()
         .find(
           (m, idx) =>
             m.forwards?.length &&
-            nowTs - m.ts <= 90000 &&
-            (m.userId === primaryItem.userId || idx === 0)
+            nowTs - m.ts <= fwdWindowMs &&
+            (m.userId === primaryItem.userId || idx === 0 || (hasBackRefCue && idx <= 1))
         );
       if (recentFwd) {
         forwardRefs.push(...recentFwd.forwards);
@@ -1115,7 +1135,8 @@ export class BridgeEngine extends EventEmitter {
               ? ' [图片]'
               : '[图片]'
             : '';
-        return `- ${m.senderName}: ${m.text || ''}${imgSuffix}`;
+        const clock = formatAmbientClock(m.ts);
+        return `- [${clock}] ${m.senderName}: ${m.text || ''}${imgSuffix}`;
       });
       contextPrefixParts.push(
         `[刚才本群你未发言前的背景聊天（仅助理解前因，无需逐条回复）]\n${ambientLines.join('\n')}\n[/群聊背景]`

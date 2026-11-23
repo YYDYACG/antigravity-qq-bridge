@@ -422,7 +422,85 @@ test('BridgeEngine carries recent ambient regular image when user sends image fi
     assert.equal(fetchedMetas[0].url, 'https://cdn.qq.com/neon_screenshot.png');
     assert.equal(fetchedMetas[0].isAmbientImage, true);
     assert.equal(askPayloads[0].images.length, 1);
-    assert.match(askPayloads[0].lorebookBlock, /- TesterA: \[图1\]（已附带该图）/);
+    assert.match(askPayloads[0].lorebookBlock, /- \[\d{2}:\d{2}\] TesterA: \[图1\]（已附带该图）/);
+
+    // 3. Cross-hour (3h old) images from other group members ARE carried on back-reference cue ("他在玩什么梗"),
+    //    while casual greeting ("猫猫早安") does NOT pull old images!
+    const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+    engine._recordAmbientGroupMessage({
+      messageType: 'group',
+      groupId: '888888',
+      userId: '200002',
+      senderName: 'TesterB',
+      text: '',
+      images: [{ url: 'https://cdn.qq.com/old_meme_1.png', isSticker: false, isCardPreview: false }],
+      links: [],
+      forwards: [],
+      timestamp: threeHoursAgo
+    });
+    engine._recordAmbientGroupMessage({
+      messageType: 'group',
+      groupId: '888888',
+      userId: '300003',
+      senderName: 'TesterC',
+      text: '',
+      images: [{ url: 'https://cdn.qq.com/old_meme_2.jpg', isSticker: false, isCardPreview: false }],
+      links: [],
+      forwards: [],
+      timestamp: threeHoursAgo + 8000
+    });
+
+    const casualItem = { ...item, messageId: '3003', text: '猫猫早安' };
+    await engine._handleMergedBatch({
+      sessionKey: 'group:888888',
+      items: [casualItem],
+      count: 1,
+      text: '猫猫早安',
+      images: [],
+      lastItem: casualItem
+    });
+    assert.equal(askPayloads.length, 2);
+    assert.equal(askPayloads[1].images.length, 0); // casual greeting must NOT pull 3h-old images!
+
+    // Re-seed same 3h-old ambient images, now user asks "猫猫，他在玩什么梗" -> carries BOTH images!
+    engine._recordAmbientGroupMessage({
+      messageType: 'group',
+      groupId: '888888',
+      userId: '200002',
+      senderName: 'TesterB',
+      text: '',
+      images: [{ url: 'https://cdn.qq.com/old_meme_1.png', isSticker: false, isCardPreview: false }],
+      links: [],
+      forwards: [],
+      timestamp: threeHoursAgo
+    });
+    engine._recordAmbientGroupMessage({
+      messageType: 'group',
+      groupId: '888888',
+      userId: '300003',
+      senderName: 'TesterC',
+      text: '',
+      images: [{ url: 'https://cdn.qq.com/old_meme_2.jpg', isSticker: false, isCardPreview: false }],
+      links: [],
+      forwards: [],
+      timestamp: threeHoursAgo + 8000
+    });
+
+    const backRefItem = { ...item, messageId: '3004', text: '猫猫，他在玩什么梗' };
+    await engine._handleMergedBatch({
+      sessionKey: 'group:888888',
+      items: [backRefItem],
+      count: 1,
+      text: '猫猫，他在玩什么梗',
+      images: [],
+      lastItem: backRefItem
+    });
+    assert.equal(askPayloads.length, 3);
+    assert.equal(askPayloads[2].images.length, 2);
+    assert.equal(askPayloads[2].images[0].sourceUrl, 'https://cdn.qq.com/old_meme_1.png');
+    assert.equal(askPayloads[2].images[1].sourceUrl, 'https://cdn.qq.com/old_meme_2.jpg');
+    assert.match(askPayloads[2].lorebookBlock, /- \[\d{2}:\d{2}\] TesterB: \[图1\]（已附带该图）/);
+    assert.match(askPayloads[2].lorebookBlock, /- \[\d{2}:\d{2}\] TesterC: \[图2\]（已附带该图）/);
   } finally {
     engine.stickerStore.close();
     engine.lorebookStore.close();
