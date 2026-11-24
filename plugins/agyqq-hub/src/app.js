@@ -134,14 +134,25 @@ window.addEventListener('message', (event) => {
     reply(false);
     return;
   }
+  const tryWindowOpen = () => {
+    try {
+      const win = window.open(data.url, '_blank', 'noopener');
+      reply(Boolean(win));
+    } catch {
+      reply(false);
+    }
+  };
   const caps = app.getHostCapabilities?.();
   if (caps?.openLinks) {
     app
       .openLink({ url: data.url })
-      .then(() => reply(true))
-      .catch(() => reply(false));
+      .then((res) => {
+        if (res?.isError) tryWindowOpen();
+        else reply(true);
+      })
+      .catch(() => tryWindowOpen());
   } else {
-    reply(false);
+    tryWindowOpen();
   }
 });
 

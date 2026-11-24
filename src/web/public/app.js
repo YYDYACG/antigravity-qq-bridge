@@ -851,7 +851,7 @@ function openExternalFromHub(url, fallbackEndpoint = '') {
         finishFallback();
       }
     };
-    const timer = setTimeout(finishFallback, 350);
+    const timer = setTimeout(finishFallback, 800);
     window.addEventListener('message', onMsg);
     try {
       window.parent.postMessage({ type: 'agyqq:open-external', url, reqId }, '*');

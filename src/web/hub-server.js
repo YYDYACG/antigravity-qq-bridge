@@ -17,11 +17,23 @@ function openLocalUrlInBrowser(rawUrl) {
   const target = validateLocalBrowserUrl(rawUrl);
   let child;
   if (process.platform === 'win32') {
-    child = spawn('rundll32.exe', ['url.dll,FileProtocolHandler', target], {
-      detached: true,
-      windowsHide: true,
-      stdio: 'ignore'
-    });
+    child = spawn(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-WindowStyle',
+        'Hidden',
+        '-Command',
+        'Start-Process -FilePath $env:AGYQQ_OPEN_URL'
+      ],
+      {
+        detached: true,
+        windowsHide: true,
+        stdio: 'ignore',
+        env: { ...process.env, AGYQQ_OPEN_URL: target }
+      }
+    );
   } else if (process.platform === 'darwin') {
     child = spawn('open', [target], { detached: true, stdio: 'ignore' });
   } else {
