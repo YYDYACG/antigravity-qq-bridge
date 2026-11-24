@@ -47,6 +47,7 @@ export function parseCliArgs(argv = []) {
     rootDir: DEFAULT_ROOT,
     pluginDir: '',
     withPlugin: null, // null = auto/prompt, true = force on, false = skip
+    withFfmpeg: null, // null = auto/prompt, true = install if missing, false = skip
     withSovits: null, // null = auto/prompt, true = force on, false = skip
     withMemewiki: null, // null = prompt/default false, true = sync
     ownerQq: [],
@@ -81,6 +82,10 @@ export function parseCliArgs(argv = []) {
       opts.withPlugin = true;
     } else if (arg === '--skip-plugin' || arg === '--no-plugin') {
       opts.withPlugin = false;
+    } else if (arg === '--with-ffmpeg') {
+      opts.withFfmpeg = true;
+    } else if (arg === '--skip-ffmpeg' || arg === '--no-ffmpeg') {
+      opts.withFfmpeg = false;
     } else if (arg === '--with-sovits') {
       opts.withSovits = true;
     } else if (arg === '--skip-sovits' || arg === '--no-sovits') {
@@ -139,6 +144,8 @@ export function getHelpText() {
   --ws-url <URL>              OneBot Forward WS 地址（默认 ws://127.0.0.1:13001）
   --http-url <URL>            OneBot HTTP 地址（默认 http://127.0.0.1:13000）
   --ffmpeg <路径>             指定 FFmpeg 可执行文件路径（用于 GIF 分镜）
+  --with-ffmpeg               若未检测到 FFmpeg，自动调用系统包管理器安装并绑定路径
+  --skip-ffmpeg               跳过 FFmpeg 自动安装
   --with-plugin               安装并打包 Antigravity 2.0 (AGY 2) 侧边栏插件
   --skip-plugin               跳过侧边栏插件安装
   --plugin-dir <目录>         自定义插件安装目录（默认 ~/.gemini/config/plugins/agyqq-hub）
@@ -192,6 +199,141 @@ function runNpmCommand(args, cwd, { dryRun = false, log = console.log } = {}) {
   return { ok: true };
 }
 
+function runPackageCommand(cmd, args, { dryRun = false, log = console.log } = {}) {
+  const display = `${cmd} ${args.join(' ')}`;
+  if (dryRun) {
+    log(`  [演练] 将执行: ${display}`);
+    return { ok: true, dryRun: true };
+  }
+  log(`  执行: ${display}`);
+  const opts = { stdio: 'inherit', shell: false };
+  let res = spawnSync(cmd, args, opts);
+  if (process.platform === 'win32' && res.error?.code === 'ENOENT' && !/[\\/]/.test(cmd)) {
+    res = spawnSync('cmd.exe', ['/d', '/s', '/c', cmd, ...args], opts);
+  }
+  if (res.error || res.status !== 0) {
+    return { ok: false, error: res.error?.message || `exit ${res.status}` };
+  }
+  return { ok: true };
+}
+
+function findFfmpegInDir(baseDir, maxDepth = 3) {
+  if (!baseDir || !fs.existsSync(baseDir)) return '';
+  const queue = [{ dir: baseDir, depth: 0 }];
+  while (queue.length) {
+    const { dir, depth } = queue.shift();
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const ent of entries) {
+      const full = path.join(dir, ent.name);
+      if (ent.isFile() && ent.name.toLowerCase() === 'ffmpeg.exe') {
+        return full;
+      }
+      if (ent.isDirectory() && depth < maxDepth) {
+        queue.push({ dir: full, depth: depth + 1 });
+      }
+    }
+  }
+  return '';
+}
+
+export function discoverWindowsFfmpegPath(env = process.env) {
+  if (process.platform !== 'win32') return '';
+  const localAppData = env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const directCandidates = [
+    path.join(localAppData, 'Microsoft', 'WinGet', 'Links', 'ffmpeg.exe'),
+    path.join(os.homedir(), 'scoop', 'shims', 'ffmpeg.exe'),
+    'C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe'
+  ];
+  for (const cand of directCandidates) {
+    if (fs.existsSync(cand)) return cand;
+  }
+  const wingetPkgs = path.join(localAppData, 'Microsoft', 'WinGet', 'Packages');
+  if (fs.existsSync(wingetPkgs)) {
+    try {
+      for (const ent of fs.readdirSync(wingetPkgs, { withFileTypes: true })) {
+        if (ent.isDirectory() && /ffmpeg/i.test(ent.name)) {
+          const found = findFfmpegInDir(path.join(wingetPkgs, ent.name), 3);
+          if (found) return found;
+        }
+      }
+    } catch {
+      // ignore scan error
+    }
+  }
+  return '';
+}
+
+function installFfmpegForPlatform({ dryRun = false, log = console.log, probe = probeCommand } = {}) {
+  if (process.platform === 'win32') {
+    if (probe('winget', ['--version']).ok) {
+      const r = runPackageCommand(
+        'winget',
+        ['install', '--id', 'Gyan.FFmpeg', '-e', '--accept-source-agreements', '--accept-package-agreements'],
+        { dryRun, log }
+      );
+      if (r.ok) {
+        return {
+          installed: true,
+          manager: 'winget',
+          ffmpegPath: dryRun ? '' : discoverWindowsFfmpegPath() || 'ffmpeg'
+        };
+      }
+      return { installed: false, manager: 'winget', error: r.error };
+    }
+    if (probe('scoop', ['--version']).ok) {
+      const r = runPackageCommand('scoop', ['install', 'ffmpeg'], { dryRun, log });
+      return r.ok
+        ? { installed: true, manager: 'scoop', ffmpegPath: dryRun ? '' : discoverWindowsFfmpegPath() || 'ffmpeg' }
+        : { installed: false, manager: 'scoop', error: r.error };
+    }
+    if (probe('choco', ['--version']).ok) {
+      const r = runPackageCommand('choco', ['install', 'ffmpeg', '-y'], { dryRun, log });
+      return r.ok
+        ? { installed: true, manager: 'choco', ffmpegPath: dryRun ? '' : discoverWindowsFfmpegPath() || 'ffmpeg' }
+        : { installed: false, manager: 'choco', error: r.error };
+    }
+    return {
+      installed: false,
+      error: '未检测到 winget / scoop / choco，请前往 https://ffmpeg.org/download.html 手动安装并填写 vision.ffmpegPath'
+    };
+  }
+
+  if (process.platform === 'darwin') {
+    if (probe('brew', ['--version']).ok) {
+      const r = runPackageCommand('brew', ['install', 'ffmpeg'], { dryRun, log });
+      return r.ok
+        ? { installed: true, manager: 'brew', ffmpegPath: 'ffmpeg' }
+        : { installed: false, manager: 'brew', error: r.error };
+    }
+    return { installed: false, error: '未检测到 Homebrew，请先安装 brew 后执行 brew install ffmpeg' };
+  }
+
+  // Linux: only auto-run package manager when already root; otherwise print exact sudo command cleanly
+  const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+  const linuxMgrs = [
+    { bin: 'apt-get', args: ['install', '-y', 'ffmpeg'], hint: 'sudo apt-get update && sudo apt-get install -y ffmpeg' },
+    { bin: 'dnf', args: ['install', '-y', 'ffmpeg'], hint: 'sudo dnf install -y ffmpeg' },
+    { bin: 'pacman', args: ['-S', '--noconfirm', 'ffmpeg'], hint: 'sudo pacman -S --noconfirm ffmpeg' }
+  ];
+  for (const m of linuxMgrs) {
+    if (probe(m.bin, ['--version']).ok) {
+      if (isRoot) {
+        const r = runPackageCommand(m.bin, m.args, { dryRun, log });
+        return r.ok
+          ? { installed: true, manager: m.bin, ffmpegPath: 'ffmpeg' }
+          : { installed: false, manager: m.bin, error: r.error };
+      }
+      return { installed: false, manager: m.bin, error: `请手动运行: ${m.hint}` };
+    }
+  }
+  return { installed: false, error: '未识别的系统包管理器，请手动安装 ffmpeg 后重试' };
+}
+
 function copyDirClean(srcDir, dstDir) {
   fs.mkdirSync(dstDir, { recursive: true });
   for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
@@ -240,6 +382,8 @@ export async function runInstaller(rawOpts = {}, io = {}) {
     configCreated: false,
     configUpdated: false,
     hubToken: '',
+    ffmpegInstalled: false,
+    ffmpegPath: '',
     pluginInstalled: false,
     pluginDir: pluginDstDir,
     sovitsInitialized: false,
@@ -252,12 +396,33 @@ export async function runInstaller(rawOpts = {}, io = {}) {
   log('============================================================\n');
 
   // Step 1: Environment preflight
-  log('[1/6] 检查运行环境...');
+  log('[1/7] 检查运行环境...');
   if (!isNodeVersionSupported(process.versions.node)) {
     throw new Error(`当前 Node.js 版本为 v${process.versions.node}，需要 >= v${MIN_NODE.join('.')}（用于内置 node:sqlite）。请升级后重试。`);
   }
-  const agyProbe = io.probeCommand ? io.probeCommand('agy', ['--version']) : probeCommand('agy', ['--version']);
-  const ffmpegProbe = io.probeCommand ? io.probeCommand(opts.ffmpegPath || 'ffmpeg', ['-version']) : probeCommand(opts.ffmpegPath || 'ffmpeg', ['-version']);
+  const probe = io.probeCommand || probeCommand;
+  let existingFfmpegCfg = '';
+  if (fs.existsSync(cfgPath)) {
+    try {
+      existingFfmpegCfg = String(readJsonFile(cfgPath)?.vision?.ffmpegPath || '').trim();
+    } catch {
+      existingFfmpegCfg = '';
+    }
+  }
+  const agyProbe = probe('agy', ['--version']);
+  const primaryFfmpegBin = opts.ffmpegPath || existingFfmpegCfg || 'ffmpeg';
+  let ffmpegProbe = probe(primaryFfmpegBin, ['-version']);
+  let detectedFfmpegPath = ffmpegProbe.ok ? primaryFfmpegBin : '';
+  if (!ffmpegProbe.ok && !io.probeCommand) {
+    const winFound = discoverWindowsFfmpegPath();
+    if (winFound) {
+      const p2 = probe(winFound, ['-version']);
+      if (p2.ok) {
+        ffmpegProbe = p2;
+        detectedFfmpegPath = winFound;
+      }
+    }
+  }
   const napcatDirExists = fs.existsSync(path.join(rootDir, 'napcat'));
   const geminiDirExists = fs.existsSync(path.join(os.homedir(), '.gemini'));
 
@@ -266,14 +431,16 @@ export async function runInstaller(rawOpts = {}, io = {}) {
     agyOk: agyProbe.ok,
     agyVersion: agyProbe.version,
     ffmpegOk: ffmpegProbe.ok,
+    ffmpegPath: detectedFfmpegPath,
     napcatDirExists,
     geminiDirExists
   };
+  summary.ffmpegPath = detectedFfmpegPath;
 
   log(`  ✓ Node.js v${process.versions.node} (>= v${MIN_NODE.join('.')})`);
   log(agyProbe.ok ? `  ✓ Antigravity CLI (agy): ${agyProbe.version}` : '  ! 未检测到 agy CLI（请安装并登录 Google Antigravity CLI 后再启动桥接服务）');
-  log(ffmpegProbe.ok ? `  ✓ FFmpeg 已就绪（支持动态 GIF 时序分镜）` : '  · 未检测到 FFmpeg（可选；如需动图分镜，请安装 FFmpeg 或稍后在 Hub 中填写 ffmpegPath）');
-  log(napcatDirExists ? '  ✓ 检测到项目内 napcat/ 目录' : '  · 未检测到项目内 napcat/ 目录（可选；你也可以连接外部独立运行的 NapCatQQ）');
+  log(ffmpegProbe.ok ? `  ✓ FFmpeg 已就绪 (${detectedFfmpegPath}，支持动态 GIF 时序分镜)` : '  · 未检测到 FFmpeg（可选；如需 GIF 动态分镜，可加 --with-ffmpeg 自动安装或手动配置 vision.ffmpegPath）');
+  log(napcatDirExists ? '  ✓ 检测到项目内 napcat/ 目录' : '  · 未检测到项目内 napcat/ 目录（可选；你也可以连接外部独立运行的 OneBot v11 协议端）');
 
   let rl = null;
   const interactive = !opts.yes && Boolean(process.stdin.isTTY) && !io.nonInteractive;
@@ -296,7 +463,7 @@ export async function runInstaller(rawOpts = {}, io = {}) {
 
   try {
     // Step 2: Install root npm dependencies
-    log('\n[2/6] 安装核心运行依赖（仅 ws）...');
+    log('\n[2/7] 安装核心运行依赖（仅 ws）...');
     const hasWs = fs.existsSync(path.join(rootDir, 'node_modules', 'ws', 'package.json'));
     if (opts.skipNpm) {
       log('  · 已按 --skip-npm 跳过依赖安装');
@@ -307,7 +474,7 @@ export async function runInstaller(rawOpts = {}, io = {}) {
     }
 
     // Step 3: Initialize or gently merge config.json
-    log('\n[3/6] 初始化主配置 config.json...');
+    log('\n[3/7] 初始化主配置 config.json...');
     if (!fs.existsSync(exampleCfgPath)) {
       throw new Error(`未找到配置模板: ${exampleCfgPath}`);
     }
@@ -388,6 +555,9 @@ export async function runInstaller(rawOpts = {}, io = {}) {
     if (opts.ffmpegPath) {
       cfg.vision.ffmpegPath = opts.ffmpegPath;
       dirty = true;
+    } else if (detectedFfmpegPath && detectedFfmpegPath !== 'ffmpeg' && (!cfg.vision.ffmpegPath || cfg.vision.ffmpegPath === 'ffmpeg')) {
+      cfg.vision.ffmpegPath = detectedFfmpegPath;
+      dirty = true;
     }
     if (opts.sovitsRoot) {
       cfg.tts.sovitsRoot = opts.sovitsRoot;
@@ -395,25 +565,68 @@ export async function runInstaller(rawOpts = {}, io = {}) {
       dirty = true;
     }
 
-    if (dirty) {
-      summary.configUpdated = true;
-      if (opts.dryRun) {
-        log(`  [演练] 将写入 ${cfgPath} 与 ${tokenFilePath}`);
-      } else {
+    const persistConfigIfDirty = () => {
+      if (dirty) {
+        summary.configUpdated = true;
+        if (opts.dryRun) {
+          log(`  [演练] 将写入 ${cfgPath} 与 ${tokenFilePath}`);
+        } else {
+          fs.mkdirSync(logsDir, { recursive: true });
+          writeJsonFile(cfgPath, cfg);
+          fs.writeFileSync(tokenFilePath, `${cfg.hub.token}\n`, 'utf8');
+          log(`  ✓ 已写入 ${cfgPath}`);
+        }
+        dirty = false;
+      } else if (!opts.dryRun) {
         fs.mkdirSync(logsDir, { recursive: true });
-        writeJsonFile(cfgPath, cfg);
-        fs.writeFileSync(tokenFilePath, `${cfg.hub.token}\n`, 'utf8');
-        log(`  ✓ 已写入 ${cfgPath}`);
+        if (!fs.existsSync(tokenFilePath) && cfg.hub.token) {
+          fs.writeFileSync(tokenFilePath, `${cfg.hub.token}\n`, 'utf8');
+        }
       }
-    } else if (!opts.dryRun) {
-      fs.mkdirSync(logsDir, { recursive: true });
-      if (!fs.existsSync(tokenFilePath) && cfg.hub.token) {
-        fs.writeFileSync(tokenFilePath, `${cfg.hub.token}\n`, 'utf8');
+    };
+    persistConfigIfDirty();
+
+    // Step 4: Optional FFmpeg installation (for GIF temporal storyboard)
+    log('\n[4/7] 可选组件：FFmpeg（用于动态 GIF 时序分镜）...');
+    if (ffmpegProbe.ok) {
+      log(`  ✓ 已检测到 FFmpeg (${detectedFfmpegPath})，跳过安装`);
+    } else {
+      let doFfmpeg = opts.withFfmpeg;
+      if (doFfmpeg === null) {
+        doFfmpeg = interactive
+          ? await askYesNo('  未检测到 FFmpeg，是否通过系统包管理器自动安装（推荐，用于 GIF 动图分镜）？', true)
+          : false;
+      }
+      if (doFfmpeg) {
+        const installerFn = io.installFfmpeg || installFfmpegForPlatform;
+        const ffRes = await installerFn({ dryRun: opts.dryRun, log, probe });
+        if (ffRes?.installed) {
+          summary.ffmpegInstalled = true;
+          summary.checks.ffmpegOk = true;
+          const resolvedBin = String(ffRes.ffmpegPath || '').trim();
+          if (resolvedBin) {
+            summary.ffmpegPath = resolvedBin;
+            if (!opts.dryRun && resolvedBin !== cfg.vision.ffmpegPath) {
+              cfg.vision.ffmpegPath = resolvedBin;
+              dirty = true;
+              persistConfigIfDirty();
+            }
+          }
+          log(
+            opts.dryRun
+              ? `  [演练] 将通过 ${ffRes.manager || '系统包管理器'} 安装 FFmpeg 并自动绑定 vision.ffmpegPath`
+              : `  ✓ FFmpeg 安装完成${resolvedBin ? `（已自动绑定 vision.ffmpegPath = ${resolvedBin}）` : ''}`
+          );
+        } else {
+          log(`  ! 未能自动安装 FFmpeg：${ffRes?.error || '请手动安装后在 Hub 填写 vision.ffmpegPath'}`);
+        }
+      } else {
+        log('  · 跳过 FFmpeg 自动安装（静图识图不受影响；之后可随时加 --with-ffmpeg 补装）');
       }
     }
 
-    // Step 4: Optional GPT-SoVITS v5 scaffolding
-    log('\n[4/6] 可选组件：GPT-SoVITS v5 语音配置...');
+    // Step 5: Optional GPT-SoVITS v5 scaffolding
+    log('\n[5/7] 可选组件：GPT-SoVITS v5 语音配置...');
     let doSovits = opts.withSovits;
     if (doSovits === null) {
       doSovits = interactive
@@ -441,8 +654,8 @@ export async function runInstaller(rawOpts = {}, io = {}) {
       log('  · 跳过 GPT-SoVITS v5 初始化（纯文字模式可直接运行，随时可补配）');
     }
 
-    // Step 5: Optional Antigravity 2.0 (AGY 2) MCP App plugin
-    log('\n[5/6] 可选组件：Antigravity 2.0 (AGY 2) 侧边栏插件 (agyqq-hub)...');
+    // Step 6: Optional Antigravity 2.0 (AGY 2) MCP App plugin
+    log('\n[6/7] 可选组件：Antigravity 2.0 (AGY 2) 侧边栏插件 (agyqq-hub)...');
     let doPlugin = opts.withPlugin;
     if (doPlugin === null) {
       if (interactive) {
@@ -490,8 +703,8 @@ export async function runInstaller(rawOpts = {}, io = {}) {
       log('  · 跳过 Antigravity 2.0 侧边栏插件安装（之后可随时加 --with-plugin 补装）');
     }
 
-    // Step 6: Optional L2 MemeWiki sync
-    log('\n[6/6] 可选组件：L2 离线公共梗百科 (cnmeme.wiki -> data/memes.db)...');
+    // Step 7: Optional L2 MemeWiki sync
+    log('\n[7/7] 可选组件：L2 离线公共梗百科 (cnmeme.wiki -> data/memes.db)...');
     let doMeme = opts.withMemewiki;
     const memesDbPath = path.join(dataDir, 'memes.db');
     if (doMeme === null) {

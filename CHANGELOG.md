@@ -8,7 +8,7 @@ Initial public release of **Antigravity QQ Bridge** (`v1.0.0`) and **Antigravity
 
 ### Highlights
 - **Cross-Platform One-Click Installer (`scripts/install.mjs`, `install.bat`, `install.ps1`)**:
-  - Interactive & non-interactive (`--yes`) setup with `--dry-run`, pre-flight Node/`agy`/FFmpeg checks, non-destructive `config.json` generation, optional GPT-SoVITS v5 & L2 MemeWiki initialization, and automatic Antigravity 2.0 (`AGY 2`) plugin install + `AGYQQ_BRIDGE_DIR` binding + `dist/app.html` build.
+  - Interactive & non-interactive (`--yes`) setup with `--dry-run`, pre-flight Node/`agy`/FFmpeg checks, optional FFmpeg auto-install (`--with-ffmpeg` via `winget`/`scoop`/`choco`/`brew` + automatic `vision.ffmpegPath` binding), non-destructive `config.json` generation, optional GPT-SoVITS v5 & L2 MemeWiki initialization, and automatic Antigravity 2.0 (`AGY 2`) plugin install + `AGYQQ_BRIDGE_DIR` binding + `dist/app.html` build.
 - **Persistent Dual-Lane ACP Core (`agy acp --stdio`)**: Zero-cold-start dual workers with separate Owner workspace lane and sandboxed Group lane (`--sandbox` + 4-layer Owner Guard).
 - **Adjustable Context Budget & Seamless Compaction**: Configurable per-session token budget (`16K`–`2M`, or `0` unlimited) with live slider, quick presets (`64K` / `128K` / `256K` / `512K` / `1M` / unlimited), `maxPromptChars` control, and background Scheme A memory handoff (`data/session-summaries/`).
 - **Full-Scenario Multimodal Vision, Forwards & Bilibili**:

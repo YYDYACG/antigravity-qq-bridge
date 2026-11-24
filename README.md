@@ -129,8 +129,8 @@ flowchart LR
 ```text
 请帮我把当前仓库（或先克隆 https://github.com/YYDYACG/antigravity-qq-bridge.git 到本地目录）的 Antigravity QQ Bridge 完整安装并初始化好：
 1. 先检查本机 Node.js（需 >= 22.13.0）、agy CLI、FFmpeg 以及是否已有 NapCatQQ（或其他 OneBot v11 协议端）/ GPT-SoVITS v5 环境，并把检测结果告诉我。
-2. 安装前先问我这几个必要信息：我的主人 QQ 号、要开启的测试群号、伴侣名字，以及是否需要顺便安装 Antigravity 2.0 (AGY 2) 侧边栏插件、GPT-SoVITS v5 语音模板或 L2 离线梗百科。
-3. 拿到我的回答后，直接运行内置安装程序 `node scripts/install.mjs --yes ...`（按我选的开关传入 `--owner-qq`、`--group-id`、`--persona-name`、`--with-plugin`、`--with-sovits`、`--with-memewiki` 等参数）；如果本机已有 `config.json`，务必保留原配置不要覆盖。
+2. 安装前先问我这几个必要信息：我的主人 QQ 号、要开启的测试群号、伴侣名字，以及是否需要顺便安装 FFmpeg（用于 GIF 动态分镜）、Antigravity 2.0 (AGY 2) 侧边栏插件、GPT-SoVITS v5 语音模板或 L2 离线梗百科。
+3. 拿到我的回答后，直接运行内置安装程序 `node scripts/install.mjs --yes ...`（按我选的开关传入 `--owner-qq`、`--group-id`、`--persona-name`、`--with-ffmpeg`、`--with-plugin`、`--with-sovits`、`--with-memewiki` 等参数）；如果本机已有 `config.json`，务必保留原配置不要覆盖。
 4. 安装完成后跑一次 `npm test` 验证环境无误，并告诉我 Antigravity Hub 的访问地址、怎么连接 OneBot v11 协议端（如自备的 NapCatQQ），以及如何启动服务。
 ```
 
@@ -138,7 +138,7 @@ flowchart LR
 
 ### 方式二：一键安装程序（交互 / 参数化）
 
-项目内置了跨平台一键安装程序 [`scripts/install.mjs`](scripts/install.mjs)（自动完成环境体检、安装 `ws`、生成不覆盖已有配置的 `config.json` 与随机 `hub.token`、按需初始化 GPT-SoVITS v5 / L2 梗百科，以及**自动复制、写入 `AGYQQ_BRIDGE_DIR` 并打包 Antigravity 2.0 侧边栏插件**）：
+项目内置了跨平台一键安装程序 [`scripts/install.mjs`](scripts/install.mjs)（自动完成环境体检、安装 `ws`、生成不覆盖已有配置的 `config.json` 与随机 `hub.token`、**缺失时自动通过系统包管理器安装 FFmpeg 并绑定 `vision.ffmpegPath`**、按需初始化 GPT-SoVITS v5 / L2 梗百科，以及**自动复制、写入 `AGYQQ_BRIDGE_DIR` 并打包 Antigravity 2.0 侧边栏插件**）：
 
 ```powershell
 # 1. 克隆仓库
@@ -158,13 +158,13 @@ npm run setup
 **常用非交互一键参数示例**（适合脚本化部署或直接一行搞定）：
 
 ```powershell
-# 默认安装 + 填好主人 QQ / 群白名单 + 自动安装并打包 AGY 2 侧边栏插件
-node scripts/install.mjs --yes --owner-qq 123456789 --group-id 987654321 --with-plugin
+# 默认安装 + 填好主人 QQ / 群白名单 + 自动安装 FFmpeg（如缺失）与 AGY 2 侧边栏插件
+node scripts/install.mjs --yes --owner-qq 123456789 --group-id 987654321 --with-ffmpeg --with-plugin
 
 # 先演练看看会改哪些文件（不实际写入）
-node scripts/install.mjs --yes --with-plugin --dry-run
+node scripts/install.mjs --yes --with-ffmpeg --with-plugin --dry-run
 
-# 查看全部可用参数（含 --persona-name / --context-budget / --sovits-root / --with-memewiki 等）
+# 查看全部可用参数（含 --persona-name / --context-budget / --ffmpeg / --sovits-root / --with-memewiki 等）
 node scripts/install.mjs --help
 ```
 
@@ -212,7 +212,24 @@ Copy-Item config.example.json config.json
 > - **可能不可用（不支持时会自动跳过，不影响主流程）**：与机器人 QQ 云端收藏表情双向同步（依赖 `fetch_custom_face_detail` / `fetch_custom_face` / `add_custom_face` / `set_custom_face_desc` 非标准扩展接口；本地偷图、`/存表情`、`/表情库` 与自动斗图照常工作）。
 > - **视协议端能力而定**：语音发送（`record` + `base64://` WAV）依赖协议端具备 WAV→SILK 转码能力，若不支持可能无法发送语音条（纯文字与图片不受影响）。
 
-#### 第 3 步（可选）：手动启用 GPT-SoVITS v5 六情感语音
+#### 第 3 步（可选，推荐）：安装 FFmpeg（用于 GIF 动态分镜）
+
+不安装 FFmpeg 时静态识图不受影响；安装后可支持动态 GIF 时序分镜：
+
+```powershell
+# Windows（WinGet）
+winget install --id Gyan.FFmpeg -e
+
+# macOS（Homebrew）
+# brew install ffmpeg
+
+# Ubuntu / Debian
+# sudo apt-get update && sudo apt-get install -y ffmpeg
+```
+
+安装后若未自动加入 `PATH`，可在 `config.json` 或 Antigravity Hub 中填写 `vision.ffmpegPath` 指向 `ffmpeg.exe` 路径。
+
+#### 第 4 步（可选）：手动启用 GPT-SoVITS v5 六情感语音
 
 1. 复制推理配置模板并填入你本机的 GPT-SoVITS v5 底模路径：
    ```powershell
@@ -222,7 +239,7 @@ Copy-Item config.example.json config.json
 3. 创建 `audio_clip/` 目录，放入 6 段情感参考音频（默认命名：`平静.wav`、`温柔.wav`、`开心.wav`、`调皮.wav`、`委屈.wav`、`疑问.wav`），并在 `config.json` 或 Hub 声线页填写对应台词 `promptText`。
 4. 若不需要语音或需要释放显存，可在 Hub「声线与语音」页关闭 TTS 或不启动 SoVITS 后端，桥接核心会自动纯文字运行。
 
-#### 第 4 步（可选）：手动启用 L2 6,792+ 离线梗百科
+#### 第 5 步（可选）：手动启用 L2 6,792+ 离线梗百科
 
 仓库不包含二进制词库文件。你可以从 [thawline/dsh-memewiki](https://github.com/thawline/dsh-memewiki) 放入 `data/memes.db`，或直接运行增量同步脚本从 `cnmeme.wiki` 公开接口拉取：
 

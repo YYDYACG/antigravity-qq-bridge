@@ -36,6 +36,7 @@ test('parseCliArgs and isNodeVersionSupported validate options and clamp context
 
   const opts = parseCliArgs([
     '--yes',
+    '--with-ffmpeg',
     '--owner-qq',
     '10001,10002',
     '--group-id',
@@ -46,10 +47,14 @@ test('parseCliArgs and isNodeVersionSupported validate options and clamp context
     '/opt/sovits'
   ]);
   assert.equal(opts.yes, true);
+  assert.equal(opts.withFfmpeg, true);
   assert.deepEqual(opts.ownerQq, ['10001', '10002']);
   assert.deepEqual(opts.groupIds, ['90001']);
   assert.equal(opts.contextBudget, 16000);
   assert.equal(opts.withSovits, true);
+
+  const skipFf = parseCliArgs(['--skip-ffmpeg']);
+  assert.equal(skipFf.withFfmpeg, false);
 
   const unlimited = parseCliArgs(['--context-budget', '0']);
   assert.equal(unlimited.contextBudget, 0);
@@ -143,6 +148,61 @@ test('runInstaller creates config, token, SoVITS template, and AGY 2 plugin with
   }
 });
 
+test('runInstaller installs missing FFmpeg when --with-ffmpeg is passed and binds vision.ffmpegPath into config.json', async () => {
+  const dir = createTempProjectCopy();
+  const logs = [];
+  let installCalls = 0;
+
+  try {
+    const res = await runInstaller(
+      {
+        rootDir: dir,
+        yes: true,
+        skipNpm: true,
+        withPlugin: false,
+        withFfmpeg: true
+      },
+      {
+        log: (m) => logs.push(m),
+        nonInteractive: true,
+        probeCommand: (cmd) => (cmd === 'agy' ? { ok: true, version: '1.5.13' } : { ok: false, version: '' }),
+        installFfmpeg: async () => {
+          installCalls += 1;
+          return { installed: true, manager: 'winget', ffmpegPath: 'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe' };
+        }
+      }
+    );
+    assert.equal(installCalls, 1);
+    assert.equal(res.ffmpegInstalled, true);
+    assert.equal(res.ffmpegPath, 'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe');
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'config.json'), 'utf8'));
+    assert.equal(cfg.vision.ffmpegPath, 'C:\\Tools\\ffmpeg\\bin\\ffmpeg.exe');
+
+    // Re-run when FFmpeg already exists -> must NOT reinstall
+    await runInstaller(
+      {
+        rootDir: dir,
+        yes: true,
+        skipNpm: true,
+        withPlugin: false,
+        withFfmpeg: true
+      },
+      {
+        log: (m) => logs.push(m),
+        nonInteractive: true,
+        probeCommand: () => ({ ok: true, version: 'ok' }),
+        installFfmpeg: async () => {
+          installCalls += 1;
+          return { installed: true, manager: 'winget', ffmpegPath: 'should-not-run' };
+        }
+      }
+    );
+    assert.equal(installCalls, 1);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('install.mjs CLI prints help and exits 0 cleanly', () => {
   const r = spawnSync(process.execPath, [path.join(REPO_ROOT, 'scripts', 'install.mjs'), '--help'], {
     encoding: 'utf8'
@@ -150,4 +210,5 @@ test('install.mjs CLI prints help and exits 0 cleanly', () => {
   assert.equal(r.status, 0);
   assert.match(r.stdout, /Antigravity QQ Bridge 一键安装/);
   assert.match(r.stdout, /--with-plugin/);
+  assert.match(r.stdout, /--with-ffmpeg/);
 });
