@@ -423,7 +423,8 @@ export class HubServer {
     }
 
     if (pathname === '/api/stickers/rejections/clear' && method === 'POST') {
-      this.engine.stickerStore.clearRejections();
+      const body = await readJsonBody(req).catch(() => ({}));
+      this.engine.stickerStore.clearRejections({ includePermanent: Boolean(body?.includePermanent) });
       sendJson(res, 200, { ok: true });
       return;
     }

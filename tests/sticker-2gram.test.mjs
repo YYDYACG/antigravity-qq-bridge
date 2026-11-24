@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ConfigStore } from '../src/config/schema.js';
+import { BridgeEngine } from '../src/engine/bridge-engine.js';
 import { StickerStore, extract2Grams } from '../src/stickers/sticker-store.js';
 import { VisionStickerCurator, parseCuratorJson } from '../src/stickers/vision-curator.js';
 
@@ -130,6 +131,65 @@ test('VisionStickerCurator parses JSON verdicts, enriches isSelf tags, and cache
     assert.equal(visionCalls, 2); // Zero repeat token spend!
   } finally {
     stickers.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('deleteSticker permanently blacklists SHA-256 to block QQ favorite sync resurrection, while manual re-add clears it', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agyqq-stk-bl-'));
+  const storeCfg = new ConfigStore(dir);
+  storeCfg.load();
+  storeCfg.update({ onebot: { enabled: false }, tts: { enabled: false } });
+  const engine = new BridgeEngine({ rootDir: dir, configStore: storeCfg });
+
+  const localFavPath = path.join(dir, 'fav-other-ai.png');
+  fs.writeFileSync(localFavPath, TINY_PNG_A);
+
+  try {
+    // 1. Add sticker & then delete it -> permanently blacklisted
+    const added = engine.stickerStore.addSticker({
+      buffer: TINY_PNG_A,
+      ext: '.png',
+      mimeType: 'image/png',
+      tags: ['大肥鱼'],
+      source: 'qq-favorite'
+    });
+    const sha = added.sticker.sha256;
+    assert.equal(engine.stickerStore.deleteSticker(added.sticker.id, { reason: 'other-ai-girl-blacklisted' }), true);
+    assert.equal(engine.stickerStore.getStats().count, 0);
+
+    // Permanent blacklist does not expire even with 1ms maxAge, and survives default clearRejections()
+    engine.stickerStore.recordRejection({ sha256: 'temp_hash', score: 3, reason: 'temp', permanent: false });
+    engine.stickerStore.clearRejections();
+    assert.equal(engine.stickerStore.isRejected('temp_hash'), null);
+    const blk = engine.stickerStore.isRejected(sha, 1);
+    assert.ok(blk);
+    assert.equal(blk.permanent, 1);
+
+    // 2. Simulate QQ favorite sync returning the deleted sticker -> must be skipped!
+    engine.onebotClient.connected = true;
+    engine.onebotClient.fetchCustomFaceDetail = async () => [{ emoId: 1, emoPath: localFavPath, desc: '大肥鱼' }];
+    const syncRes = await engine.syncQqFavoriteStickers({ count: 10, silent: true });
+    assert.equal(syncRes.blacklisted, 1);
+    assert.equal(syncRes.imported, 0);
+    assert.equal(engine.stickerStore.getStats().count, 0);
+
+    // 3. Explicit manual re-upload clears the permanent blacklist
+    const readded = engine.stickerStore.addSticker({
+      buffer: TINY_PNG_A,
+      ext: '.png',
+      mimeType: 'image/png',
+      tags: ['手动加回'],
+      source: 'command'
+    });
+    assert.equal(readded.deduplicated, false);
+    assert.equal(engine.stickerStore.isRejected(sha), null);
+    assert.equal(engine.stickerStore.getStats().count, 1);
+  } finally {
+    engine.stickerStore.close();
+    engine.lorebookStore.close();
+    engine.memeWikiStore.close();
+    engine.tokenStore.close();
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });

@@ -80,11 +80,12 @@ export class StickerStore {
         sha256 TEXT PRIMARY KEY,
         score INTEGER NOT NULL DEFAULT 0,
         reason TEXT NOT NULL DEFAULT '',
+        permanent INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL
       );
     `);
 
-    // Safe migration for existing databases created before vision curation / meme card columns
+    // Safe migration for existing databases created before vision curation / meme card / permanent blacklist columns
     const cols = new Set(this.db.prepare('PRAGMA table_info(stickers)').all().map((c) => c.name));
     if (!cols.has('review_score')) this.db.exec('ALTER TABLE stickers ADD COLUMN review_score INTEGER DEFAULT NULL');
     if (!cols.has('review_reason')) this.db.exec("ALTER TABLE stickers ADD COLUMN review_reason TEXT NOT NULL DEFAULT ''");
@@ -94,6 +95,11 @@ export class StickerStore {
     if (!cols.has('vibe')) this.db.exec("ALTER TABLE stickers ADD COLUMN vibe TEXT NOT NULL DEFAULT ''");
     if (!cols.has('use_when')) this.db.exec("ALTER TABLE stickers ADD COLUMN use_when TEXT NOT NULL DEFAULT ''");
     if (!cols.has('avoid_when')) this.db.exec("ALTER TABLE stickers ADD COLUMN avoid_when TEXT NOT NULL DEFAULT ''");
+
+    const rejCols = new Set(this.db.prepare('PRAGMA table_info(rejected_stickers)').all().map((c) => c.name));
+    if (!rejCols.has('permanent')) {
+      this.db.exec('ALTER TABLE rejected_stickers ADD COLUMN permanent INTEGER NOT NULL DEFAULT 0');
+    }
 
     this.cooldowns = new Map(); // sessionKey -> lastSendTs
     this.stickerCooldowns = new Map(); // stickerId -> lastSendTs (15m anti-repeat)
@@ -141,7 +147,7 @@ export class StickerStore {
       `# 星喵表情包多维度手册（共 ${rows.length} 张）`,
       '',
       '> 用法：决定发哪张图时，在回复里输出 `[表情:#ID]`（例如 `[表情:#64]`）。',
-      '> 技巧：发反差梗图时文字不要剧透笑点，让文字与图面形成反差；觉得一张图就能绝杀时可直接只发 `[表情:#ID]`；普通闲聊不必强行配图。',
+      '> 技巧：优先选 [星喵本尊] 或通用非 AI 拟人表情，严禁发送 DeepSeek（大肥鱼/鲸鱼娘）、Claude（小克）、ChatGPT（龙娘）、Grok 等其他 AI 娘表情；发反差梗图时文字不要剧透笑点；觉得一张图就能绝杀时可直接只发 `[表情:#ID]`；普通闲聊不必强行配图。',
       ''
     ];
 
@@ -173,6 +179,9 @@ export class StickerStore {
   isRejected(sha256, maxAgeMs = 7 * 24 * 3600 * 1000) {
     const row = this.db.prepare('SELECT * FROM rejected_stickers WHERE sha256 = ?').get(String(sha256 || ''));
     if (!row) return null;
+    if (Number(row.permanent) === 1) {
+      return row;
+    }
     if (maxAgeMs > 0 && Date.now() - Number(row.created_at || 0) > maxAgeMs) {
       this.db.prepare('DELETE FROM rejected_stickers WHERE sha256 = ?').run(row.sha256);
       return null;
@@ -180,23 +189,32 @@ export class StickerStore {
     return row;
   }
 
-  recordRejection({ sha256, score = 0, reason = '' }) {
+  recordRejection({ sha256, score = 0, reason = '', permanent = false }) {
     this.db
       .prepare(`
-        INSERT OR REPLACE INTO rejected_stickers (sha256, score, reason, created_at)
-        VALUES (?, ?, ?, ?)
+        INSERT OR REPLACE INTO rejected_stickers (sha256, score, reason, permanent, created_at)
+        VALUES (?, ?, ?, ?, ?)
       `)
-      .run(String(sha256), Number(score || 0), String(reason || '').slice(0, 240), Date.now());
+      .run(String(sha256), Number(score || 0), String(reason || '').slice(0, 240), permanent ? 1 : 0, Date.now());
+  }
+
+  unreject(sha256) {
+    if (!sha256) return;
+    this.db.prepare('DELETE FROM rejected_stickers WHERE sha256 = ?').run(String(sha256));
   }
 
   listRejections(limit = 20) {
     return this.db
-      .prepare('SELECT sha256, score, reason, created_at FROM rejected_stickers ORDER BY created_at DESC LIMIT ?')
+      .prepare('SELECT sha256, score, reason, permanent, created_at FROM rejected_stickers ORDER BY created_at DESC LIMIT ?')
       .all(Math.max(1, Number(limit || 20)));
   }
 
-  clearRejections() {
-    this.db.exec('DELETE FROM rejected_stickers');
+  clearRejections({ includePermanent = false } = {}) {
+    if (includePermanent) {
+      this.db.exec('DELETE FROM rejected_stickers');
+    } else {
+      this.db.exec('DELETE FROM rejected_stickers WHERE permanent = 0');
+    }
   }
 
   addSticker({
@@ -218,6 +236,10 @@ export class StickerStore {
       throw new Error('表情包数据为空');
     }
     const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
+    // Explicit user manual/command/hub upload overrides any prior rejection or blacklist
+    if (source === 'manual' || source === 'command' || source === 'hub-upload' || source === 'hub-gemini-curate') {
+      this.unreject(sha256);
+    }
     const tagList = normalizeTagList(tags);
     const existing = this.db.prepare('SELECT * FROM stickers WHERE sha256 = ?').get(sha256);
 
@@ -361,9 +383,17 @@ export class StickerStore {
       .all(Math.max(1, Number(limit || 200)));
   }
 
-  deleteSticker(id) {
+  deleteSticker(id, { blacklist = true, reason = 'manual-deleted' } = {}) {
     const row = this.getById(id);
     if (!row) return false;
+    if (blacklist && row.sha256) {
+      this.recordRejection({
+        sha256: row.sha256,
+        score: 0,
+        reason: reason || 'manual-deleted',
+        permanent: true
+      });
+    }
     this.db.prepare('DELETE FROM sticker_ngrams WHERE sticker_id = ?').run(row.id);
     this.db.prepare('DELETE FROM stickers WHERE id = ?').run(row.id);
     const fp = this.getFilePath(row);

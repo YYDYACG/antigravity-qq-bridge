@@ -452,6 +452,9 @@ export class BridgeEngine extends EventEmitter {
         }
 
         // Direct fallback steal mode (when visionReviewEnabled is off)
+        if (fetched.sha256 && this.stickerStore.isRejected(fetched.sha256)) {
+          continue;
+        }
         const tagCandidates = [];
         if (meta.summary && !/^\[?动画表情\]?$/.test(meta.summary)) {
           tagCandidates.push(meta.summary.replace(/^\[|\]$/g, ''));
@@ -507,6 +510,7 @@ export class BridgeEngine extends EventEmitter {
     const items = await this.onebotClient.fetchCustomFaceDetail(count);
     let imported = 0;
     let updated = 0;
+    let blacklisted = 0;
     let failed = 0;
 
     for (const item of items) {
@@ -519,6 +523,11 @@ export class BridgeEngine extends EventEmitter {
         }
         if (!fetched) {
           failed += 1;
+          continue;
+        }
+
+        if (fetched.sha256 && this.stickerStore.isRejected(fetched.sha256)) {
+          blacklisted += 1;
           continue;
         }
 
@@ -545,10 +554,10 @@ export class BridgeEngine extends EventEmitter {
     this._log(
       'info',
       'stickers',
-      `已同步 QQ 收藏表情: 共 ${items.length} 张 (新增 ${imported}, 已有/合并 ${updated}, 跳过 ${failed})`
+      `已同步 QQ 收藏表情: 共 ${items.length} 张 (新增 ${imported}, 已有/合并 ${updated}, 拉黑跳过 ${blacklisted}, 失败 ${failed})`
     );
     this.emit('status-change');
-    return { total: items.length, imported, updated, failed };
+    return { total: items.length, imported, updated, blacklisted, failed };
   }
 
   startBatchAnalyzeStickers({ concurrency = 3 } = {}) {
