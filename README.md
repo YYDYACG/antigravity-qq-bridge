@@ -127,7 +127,7 @@ flowchart LR
 如果你正在使用 **Antigravity 2.0（AGY 2）**（或其他具备终端能力的 AI Agent），直接复制下面这段提示词发给它，即可全程自动检查环境、安装依赖、生成配置并装好 AGY 2 侧边栏插件：
 
 ```text
-请帮我把当前仓库（或先克隆 https://github.com/<你的用户名>/<你的仓库名>.git 到本地目录）的 Antigravity QQ Bridge 完整安装并初始化好：
+请帮我把当前仓库（或先克隆 https://github.com/YYDYACG/antigravity-qq-bridge.git 到本地目录）的 Antigravity QQ Bridge 完整安装并初始化好：
 1. 先检查本机 Node.js（需 >= 22.13.0）、agy CLI、FFmpeg 以及是否已有 NapCatQQ / GPT-SoVITS v5 环境，并把检测结果告诉我。
 2. 安装前先问我这几个必要信息：我的主人 QQ 号、要开启的测试群号、伴侣名字，以及是否需要顺便安装 Antigravity 2.0 (AGY 2) 侧边栏插件、GPT-SoVITS v5 语音模板或 L2 离线梗百科。
 3. 拿到我的回答后，直接运行内置安装程序 `node scripts/install.mjs --yes ...`（按我选的开关传入 `--owner-qq`、`--group-id`、`--persona-name`、`--with-plugin`、`--with-sovits`、`--with-memewiki` 等参数）；如果本机已有 `config.json`，务必保留原配置不要覆盖。
@@ -142,7 +142,7 @@ flowchart LR
 
 ```powershell
 # 1. 克隆仓库
-git clone https://github.com/<你的用户名>/<你的仓库名>.git
+git clone https://github.com/YYDYACG/antigravity-qq-bridge.git
 cd antigravity-qq-bridge
 
 # 2. 运行交互式一键安装向导
@@ -179,7 +179,7 @@ node scripts/install.mjs --help
 #### 第 1 步：安装核心依赖并初始化主配置
 
 ```powershell
-git clone https://github.com/<你的用户名>/<你的仓库名>.git
+git clone https://github.com/YYDYACG/antigravity-qq-bridge.git
 cd antigravity-qq-bridge
 npm install
 
