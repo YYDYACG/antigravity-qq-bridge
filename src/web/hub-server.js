@@ -1,8 +1,35 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { detectImageMime } from '../media/vision-fetcher.js';
+
+export function validateLocalBrowserUrl(rawUrl) {
+  const u = new URL(String(rawUrl || ''));
+  if ((u.protocol !== 'http:' && u.protocol !== 'https:') || (u.hostname !== '127.0.0.1' && u.hostname !== 'localhost')) {
+    throw new Error('仅允许打开本机 localhost / 127.0.0.1 地址');
+  }
+  return u.toString();
+}
+
+function openLocalUrlInBrowser(rawUrl) {
+  const target = validateLocalBrowserUrl(rawUrl);
+  let child;
+  if (process.platform === 'win32') {
+    child = spawn('rundll32.exe', ['url.dll,FileProtocolHandler', target], {
+      detached: true,
+      windowsHide: true,
+      stdio: 'ignore'
+    });
+  } else if (process.platform === 'darwin') {
+    child = spawn('open', [target], { detached: true, stdio: 'ignore' });
+  } else {
+    child = spawn('xdg-open', [target], { detached: true, stdio: 'ignore' });
+  }
+  child.unref();
+  return target;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -56,9 +83,10 @@ function sendJson(res, status, data) {
 }
 
 export class HubServer {
-  constructor({ configStore, engine }) {
+  constructor({ configStore, engine, openUrlFn = openLocalUrlInBrowser }) {
     this.configStore = configStore;
     this.engine = engine;
+    this.openUrlFn = openUrlFn;
     this.server = null;
     this.sseClients = new Set();
 
@@ -325,6 +353,14 @@ export class HubServer {
     if (pathname === '/api/napcat/status' && method === 'GET') {
       const st = await this.engine.napcatManager.probeStatus();
       sendJson(res, 200, { ok: true, data: st });
+      return;
+    }
+
+    if (pathname === '/api/napcat/open-webui' && method === 'POST') {
+      const st = await this.engine.napcatManager.probeStatus();
+      const safeUrl = validateLocalBrowserUrl(st?.webuiUrl || 'http://127.0.0.1:6099/webui');
+      const targetUrl = this.openUrlFn(safeUrl);
+      sendJson(res, 200, { ok: true, data: { url: targetUrl, webuiOnline: Boolean(st?.webuiOnline) } });
       return;
     }
 

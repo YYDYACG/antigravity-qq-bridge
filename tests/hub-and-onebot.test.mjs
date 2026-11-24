@@ -7,7 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { WebSocketServer } from 'ws';
 import { ConfigStore } from '../src/config/schema.js';
 import { BridgeEngine } from '../src/engine/bridge-engine.js';
-import { HubServer } from '../src/web/hub-server.js';
+import { HubServer, validateLocalBrowserUrl } from '../src/web/hub-server.js';
 
 const PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
@@ -33,8 +33,16 @@ test('HubServer enforces token auth and supports config, stickers CRUD, and stat
     tts: { enabled: false }
   });
   const token = store.get().hub.token;
+  const openedUrls = [];
   const engine = new BridgeEngine({ rootDir: dir, configStore: store });
-  const hub = new HubServer({ configStore: store, engine });
+  const hub = new HubServer({
+    configStore: store,
+    engine,
+    openUrlFn: (u) => {
+      openedUrls.push(u);
+      return u;
+    }
+  });
 
   try {
     const info = await hub.start();
@@ -51,15 +59,62 @@ test('HubServer enforces token auth and supports config, stickers CRUD, and stat
     const stJson = await rStatus.json();
     assert.equal(stJson.ok, true);
 
-    // PATCH config hot update
+    // PATCH config hot update (guard + adjustable context budget clamping & unlimited 0)
     const rPatch = await fetch(`${base}/api/config`, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({ guard: { mergeWindowSec: 3.0, ownerUsers: ['777888'] } })
+      body: JSON.stringify({
+        guard: { mergeWindowSec: 3.0, ownerUsers: ['777888'] },
+        acp: { contextBudgetTokens: 512000, maxPromptChars: 24000 }
+      })
     });
     assert.equal(rPatch.status, 200);
     assert.equal(store.get().guard.mergeWindowSec, 3.0);
     assert.deepEqual(store.get().guard.ownerUsers, ['777888']);
+    assert.equal(store.get().acp.contextBudgetTokens, 512000);
+    assert.equal(store.get().acp.maxPromptChars, 24000);
+
+    // Sub-16K non-zero clamps to 16000; >2M clamps to 2097152; 0 disables budget limit
+    await fetch(`${base}/api/config`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ acp: { contextBudgetTokens: 5000 } })
+    });
+    assert.equal(store.get().acp.contextBudgetTokens, 16000);
+
+    await fetch(`${base}/api/config`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ acp: { contextBudgetTokens: 9999999 } })
+    });
+    assert.equal(store.get().acp.contextBudgetTokens, 2097152);
+
+    await fetch(`${base}/api/config`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ acp: { contextBudgetTokens: 0 } })
+    });
+    assert.equal(store.get().acp.contextBudgetTokens, 0);
+
+    // NapCat WebUI server-side opener: requires auth, ignores client-supplied URLs, validates localhost-only
+    const rOpenUnauth = await fetch(`${base}/api/napcat/open-webui`, { method: 'POST' });
+    assert.equal(rOpenUnauth.status, 401);
+
+    const rOpen = await fetch(`${base}/api/napcat/open-webui`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ url: 'https://evil.example/phish' })
+    });
+    assert.equal(rOpen.status, 200);
+    const openJson = await rOpen.json();
+    assert.equal(openJson.ok, true);
+    assert.match(openJson.data.url, /^http:\/\/127\.0\.0\.1:6099\/webui/);
+    assert.equal(openedUrls.length, 1);
+    assert.equal(openedUrls[0], openJson.data.url);
+
+    assert.equal(validateLocalBrowserUrl('http://localhost:3200/?token=abc'), 'http://localhost:3200/?token=abc');
+    assert.throws(() => validateLocalBrowserUrl('https://evil.example/'), /localhost/);
+    assert.throws(() => validateLocalBrowserUrl('file:///C:/Windows/win.ini'), /localhost/);
 
     // Sticker upload + 2-gram search + file fetch + delete
     const rUp = await fetch(`${base}/api/stickers`, {

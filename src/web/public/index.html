@@ -195,6 +195,33 @@
               <input id="cfgOnebotRevPort" type="number" placeholder="8085" />
             </div>
           </div>
+          <div class="grid-3">
+            <div class="form-row">
+              <label>单会话上下文上限 (tokens，支持 16K~2M；填 0 不限)</label>
+              <input id="cfgModelCtxBudget" type="number" min="0" max="2097152" step="8000" placeholder="256000" />
+            </div>
+            <div class="form-row">
+              <label>上下文超限策略</label>
+              <select id="cfgModelCtxAction">
+                <option value="compact">方案 A（推荐）：后台无感总结交接单 + 换新会话</option>
+                <option value="rolling">方案 B（省额度）：跳过总结，保留近 N 轮原话快切</option>
+                <option value="warn">方案 C（手动）：仅记录警告，不自动压缩</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>单条输入最大字符数 (maxPromptChars，默认 12000)</label>
+              <input id="cfgModelMaxPromptChars" type="number" min="500" max="100000" step="500" placeholder="12000" />
+            </div>
+          </div>
+          <div class="ctx-preset-row mb-12">
+            <span class="muted" style="font-size:12px">上下文快捷档位：</span>
+            <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="64000">64K</button>
+            <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="128000">128K</button>
+            <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="256000">256K (推荐)</button>
+            <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="512000">512K</button>
+            <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="1048576">1M</button>
+            <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="0">不限 (0)</button>
+          </div>
           <div class="form-row">
             <label>核心人设提示词 (System Prompt)</label>
             <textarea id="cfgPersonaPrompt" rows="5"></textarea>
@@ -503,19 +530,34 @@
         <div class="card glass">
           <div class="card-head">
             <div>
-              <span class="tag tag-violet">上下文预算守卫 · 默认 256,000 tokens</span>
-              <h3>无感记忆压缩接力配置</h3>
-              <p class="muted">每个群与私聊独立计数；达到预算后在发完回复的后台自动总结《前情记忆交接单》并无缝切换新会话，不卡当轮回复、不断片。</p>
+              <span class="tag tag-violet" id="ctxBudgetTag">上下文上限守卫 · 当前 256K tokens</span>
+              <h3>上下文限制与无感记忆压缩配置</h3>
+              <p class="muted">每个群与私聊独立计数，可按需自由调大或调小上下文上限（16K–2M，或填 0 不限）；达标后在后台自动整理《前情记忆交接单》并无缝切换新会话。</p>
             </div>
             <button id="btnSaveContextBudget" class="btn btn-primary">保存预算策略</button>
           </div>
-          <div class="grid-3">
+          <div class="ctx-slider-box">
+            <div class="ctx-slider-head">
+              <span class="muted" style="font-size:12px">拖动调节上下文上限（0 = 不限制；超出 1M 可在下方数字框直接输入至 2M）</span>
+              <strong id="ctxBudgetRangeLabel" style="font-size:13px;color:var(--primary)">256K tokens</strong>
+            </div>
+            <input id="cfgCtxBudgetRange" type="range" min="0" max="1048576" step="16000" value="256000" />
+            <div class="ctx-preset-row">
+              <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="64000">64K</button>
+              <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="128000">128K</button>
+              <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="256000">256K (推荐)</button>
+              <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="512000">512K</button>
+              <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="1048576">1M</button>
+              <button type="button" class="btn btn-xs btn-soft ctx-preset-btn" data-budget="0">不限 (0)</button>
+            </div>
+          </div>
+          <div class="grid-4 mt-12">
             <div class="form-row">
-              <label>单会话上下文预算 (tokens，默认 256000；填 0 不限)</label>
-              <input id="cfgCtxBudget" type="number" min="0" max="1048576" step="8000" placeholder="256000" />
+              <label>单会话上下文上限 (tokens，0=不限)</label>
+              <input id="cfgCtxBudget" type="number" min="0" max="2097152" step="8000" placeholder="256000" />
             </div>
             <div class="form-row">
-              <label>达到预算后的处理策略</label>
+              <label>达到上限后的处理策略</label>
               <select id="cfgCtxAction">
                 <option value="compact">方案 A（推荐）：后台无感总结交接单 + 换新会话</option>
                 <option value="rolling">方案 B（省额度）：跳过总结，保留近 N 轮原话快切</option>
@@ -525,6 +567,10 @@
             <div class="form-row">
               <label>交接保留最近对话原话 (轮数)</label>
               <input id="cfgCtxCarryTurns" type="number" min="0" max="20" placeholder="6" />
+            </div>
+            <div class="form-row">
+              <label>单条输入最大字符 (maxPromptChars)</label>
+              <input id="cfgMaxPromptChars" type="number" min="500" max="100000" step="500" placeholder="12000" />
             </div>
           </div>
         </div>

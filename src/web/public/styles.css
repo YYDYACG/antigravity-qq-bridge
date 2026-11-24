@@ -571,6 +571,38 @@ th { color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap
   color: var(--muted);
   line-height: 1.4;
 }
+.ctx-slider-box {
+  background: rgba(109, 93, 252, 0.05);
+  border: 1px solid rgba(109, 93, 252, 0.14);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ctx-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.ctx-slider-box input[type="range"] {
+  width: 100%;
+  accent-color: #6d5dfc;
+  cursor: pointer;
+}
+.ctx-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ctx-preset-btn.is-active {
+  background: linear-gradient(135deg, #6d5dfc, #8b5cf6);
+  color: #fff;
+  border-color: transparent;
+}
+.mb-12 { margin-bottom: 12px; }
 
 /* Living Lorebook */
 .lore-filter-bar {

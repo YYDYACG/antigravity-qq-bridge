@@ -17,7 +17,7 @@ const PLUGIN_ROOT = path.resolve(__dirname, '..');
 const APP_HTML_PATH = process.env.AGYQQ_HUB_APP_HTML || path.join(PLUGIN_ROOT, 'dist', 'app.html');
 const BRIDGE_DIR = process.env.AGYQQ_BRIDGE_DIR || path.resolve(PLUGIN_ROOT, '..', '..');
 const APP_URI = 'ui://agyqq-hub/app.html';
-const VERSION = '1.2.1';
+const VERSION = '1.2.2';
 
 let startingPromise = null;
 const lastSpawnAt = {

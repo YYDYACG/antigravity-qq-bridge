@@ -141,3 +141,36 @@ test('SessionManager Scheme A falls back gracefully to verbatim recent turns if 
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('SessionManager respects live-adjusted contextBudgetTokens (raise, lower, and 0 unlimited)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agyqq-budget-'));
+  const store = new ConfigStore(dir);
+  store.load();
+  const guard = new OwnerGuard(store);
+  const mgr = new SessionManager({ rootDir: dir, configStore: store, ownerGuard: guard });
+  const mockWorker = createMockWorker();
+  mgr.groupWorker = mockWorker;
+  mgr.ownerWorker = mockWorker;
+
+  try {
+    // Raise budget to 512K -> mockWorker's 260K contextUsed should NOT overflow
+    store.update({ acp: { contextBudgetTokens: 512000 } });
+    const r1 = await mgr.ask({ sessionKey: 'group:200', lane: 'group', text: '测试调高上下文上限' });
+    assert.equal(r1.contextStatus.budget, 512000);
+    assert.equal(r1.contextStatus.overflowed, false);
+
+    // Lower budget to 128K -> same 260K contextUsed now overflows immediately
+    store.update({ acp: { contextBudgetTokens: 128000 } });
+    const r2 = await mgr.ask({ sessionKey: 'group:200', lane: 'group', text: '测试调低上下文上限' });
+    assert.equal(r2.contextStatus.budget, 128000);
+    assert.equal(r2.contextStatus.overflowed, true);
+
+    // Set budget to 0 (unlimited) -> never overflows
+    store.update({ acp: { contextBudgetTokens: 0 } });
+    const r3 = await mgr.ask({ sessionKey: 'group:200', lane: 'group', text: '测试不限上下文上限' });
+    assert.equal(r3.contextStatus.budget, 0);
+    assert.equal(r3.contextStatus.overflowed, false);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

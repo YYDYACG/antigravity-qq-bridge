@@ -277,7 +277,7 @@ export function sanitizeConfig(raw, rootDir = process.cwd()) {
   cfg.acp.maxPromptChars = clamp(cfg.acp.maxPromptChars, 500, 100000, 12000);
   const rawBudget = Number(cfg.acp.contextBudgetTokens);
   cfg.acp.contextBudgetTokens =
-    rawBudget === 0 ? 0 : Math.round(clamp(rawBudget, 20000, 1048576, 256000));
+    rawBudget === 0 ? 0 : Math.round(clamp(rawBudget, 16000, 2097152, 256000));
   cfg.acp.contextOverflowAction = ['compact', 'rolling', 'warn'].includes(cfg.acp.contextOverflowAction)
     ? cfg.acp.contextOverflowAction
     : 'compact';

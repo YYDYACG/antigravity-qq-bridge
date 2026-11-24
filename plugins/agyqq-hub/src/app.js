@@ -4,7 +4,7 @@ import {
   applyHostStyleVariables
 } from '@modelcontextprotocol/ext-apps';
 
-const app = new App({ name: 'Antigravity Hub', version: '1.2.0' }, {});
+const app = new App({ name: 'Antigravity Hub', version: '1.2.2' }, {});
 
 const elLoading = document.getElementById('viewLoading');
 const elLoadingTitle = document.getElementById('loadingTitle');
@@ -97,6 +97,18 @@ function applyTheme(ctx) {
   if (ctx?.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
 }
 
+function isSafeLocalhostUrl(raw) {
+  try {
+    const u = new URL(String(raw || ''));
+    return (
+      (u.protocol === 'http:' || u.protocol === 'https:') &&
+      (u.hostname === '127.0.0.1' || u.hostname === 'localhost')
+    );
+  } catch {
+    return false;
+  }
+}
+
 function openExternal(url) {
   if (!url) return;
   const caps = app.getHostCapabilities?.();
@@ -106,6 +118,32 @@ function openExternal(url) {
     window.open(url, '_blank', 'noopener');
   }
 }
+
+// Bridge external localhost links (e.g. NapCat QR login WebUI) clicked inside the sandboxed Hub iframe
+window.addEventListener('message', (event) => {
+  const data = event?.data;
+  if (!data || data.type !== 'agyqq:open-external') return;
+  const reply = (ok) => {
+    try {
+      event.source?.postMessage?.({ type: 'agyqq:open-external-ack', reqId: data.reqId, ok }, '*');
+    } catch {
+      // ignore cross-origin postMessage error
+    }
+  };
+  if (!isSafeLocalhostUrl(data.url)) {
+    reply(false);
+    return;
+  }
+  const caps = app.getHostCapabilities?.();
+  if (caps?.openLinks) {
+    app
+      .openLink({ url: data.url })
+      .then(() => reply(true))
+      .catch(() => reply(false));
+  } else {
+    reply(false);
+  }
+});
 
 function renderSession(st, { toastOnLaunch = true } = {}) {
   if (!st || typeof st !== 'object') return;

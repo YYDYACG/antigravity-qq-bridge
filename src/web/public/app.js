@@ -252,12 +252,47 @@ function renderConfigForm(cfg) {
     updateTrollLevelLabel(mw.trollLevel ?? 100);
   }
 
-  // Context budget
-  $('cfgCtxBudget').value = cfg.acp.contextBudgetTokens ?? 256000;
-  $('cfgCtxAction').value = cfg.acp.contextOverflowAction || 'compact';
+  // Context budget (synced across Tab 1 Models and Tab 4 Tokens)
+  syncContextBudgetUi(cfg.acp.contextBudgetTokens ?? 256000);
+  syncContextActionUi(cfg.acp.contextOverflowAction || 'compact');
+  syncMaxPromptCharsUi(cfg.acp.maxPromptChars ?? 12000);
   $('cfgCtxCarryTurns').value = cfg.acp.compactCarryTurns ?? 6;
 
   renderEmotionCards(cfg);
+}
+
+function formatBudgetShort(val) {
+  const n = Math.max(0, Math.round(Number(val) || 0));
+  if (n === 0) return '不限制';
+  if (n >= 1048576 && n % 1048576 === 0) return `${n / 1048576}M tokens`;
+  if (n >= 1000000) return `${(n / 1048576).toFixed(2).replace(/\.?0+$/, '')}M tokens`;
+  return `${Math.round(n / 1000)}K tokens`;
+}
+
+function syncContextBudgetUi(rawVal) {
+  const n = Math.max(0, Math.min(2097152, Math.round(Number(rawVal) || 0)));
+  if ($('cfgCtxBudget')) $('cfgCtxBudget').value = n;
+  if ($('cfgModelCtxBudget')) $('cfgModelCtxBudget').value = n;
+  if ($('cfgCtxBudgetRange')) $('cfgCtxBudgetRange').value = Math.min(1048576, n);
+  const label = formatBudgetShort(n);
+  if ($('ctxBudgetRangeLabel')) $('ctxBudgetRangeLabel').textContent = label;
+  if ($('ctxBudgetTag')) $('ctxBudgetTag').textContent = `上下文上限守卫 · 当前 ${label}`;
+  document.querySelectorAll('.ctx-preset-btn').forEach((btn) => {
+    const preset = Number(btn.dataset.budget);
+    btn.classList.toggle('is-active', preset === n);
+  });
+}
+
+function syncContextActionUi(action) {
+  const val = ['compact', 'rolling', 'warn'].includes(action) ? action : 'compact';
+  if ($('cfgCtxAction')) $('cfgCtxAction').value = val;
+  if ($('cfgModelCtxAction')) $('cfgModelCtxAction').value = val;
+}
+
+function syncMaxPromptCharsUi(rawVal) {
+  const n = Math.max(500, Math.min(100000, Math.round(Number(rawVal) || 12000)));
+  if ($('cfgMaxPromptChars')) $('cfgMaxPromptChars').value = n;
+  if ($('cfgModelMaxPromptChars')) $('cfgModelMaxPromptChars').value = n;
 }
 
 function renderEmotionCards(cfg) {
@@ -462,7 +497,7 @@ function renderStatus(st) {
           const budget = Number(s.contextBudget ?? defaultBudget);
           const pct = budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
           const barCls = pct >= 100 ? 'is-full' : pct >= 80 ? 'is-warn' : '';
-          const budgetTxt = budget > 0 ? `${formatNum(used)} / ${formatNum(budget)} (${pct}%)` : formatNum(used);
+          const budgetTxt = budget > 0 ? `${formatNum(used)} / ${formatNum(budget)} (${pct}%)` : `${formatNum(used)} / 不限`;
           return `
           <tr>
             <td><code>${escapeHtml(s.sessionKey)}</code><div class="muted" style="font-size:11px">${escapeHtml(s.model || '-')}</div></td>
@@ -655,6 +690,9 @@ $('btnSaveModelsPersona').addEventListener('click', async () => {
           groupModel: $('cfgGroupModel').value,
           groupThoughtLevel: $('cfgGroupThought').value,
           ownerWorkspaceDir: $('cfgOwnerCwd').value.trim(),
+          contextBudgetTokens: Number($('cfgModelCtxBudget')?.value ?? $('cfgCtxBudget')?.value ?? 256000),
+          contextOverflowAction: $('cfgModelCtxAction')?.value || $('cfgCtxAction')?.value || 'compact',
+          maxPromptChars: Number($('cfgModelMaxPromptChars')?.value ?? $('cfgMaxPromptChars')?.value ?? 12000),
           persona: {
             name: $('cfgPersonaName').value.trim(),
             systemPrompt: $('cfgPersonaPrompt').value,
@@ -765,6 +803,64 @@ $('btnSaveGuard').addEventListener('click', async () => {
   }
 });
 
+function openExternalFromHub(url, fallbackEndpoint = '') {
+  return new Promise((resolve, reject) => {
+    const inIframe = window.self !== window.top;
+    if (!inIframe) {
+      const win = window.open(url, '_blank', 'noopener');
+      if (win) {
+        resolve('browser');
+        return;
+      }
+      if (fallbackEndpoint) {
+        api(fallbackEndpoint, { method: 'POST', body: '{}' })
+          .then(() => resolve('backend'))
+          .catch(reject);
+        return;
+      }
+      resolve('browser');
+      return;
+    }
+
+    const reqId = `open_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    let settled = false;
+    const finishFallback = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMsg);
+      clearTimeout(timer);
+      if (fallbackEndpoint) {
+        api(fallbackEndpoint, { method: 'POST', body: '{}' })
+          .then(() => resolve('backend'))
+          .catch(reject);
+      } else {
+        window.open(url, '_blank', 'noopener');
+        resolve('browser');
+      }
+    };
+    const onMsg = (evt) => {
+      const d = evt?.data;
+      if (!d || d.type !== 'agyqq:open-external-ack' || d.reqId !== reqId) return;
+      if (settled) return;
+      if (d.ok) {
+        settled = true;
+        window.removeEventListener('message', onMsg);
+        clearTimeout(timer);
+        resolve('host');
+      } else {
+        finishFallback();
+      }
+    };
+    const timer = setTimeout(finishFallback, 350);
+    window.addEventListener('message', onMsg);
+    try {
+      window.parent.postMessage({ type: 'agyqq:open-external', url, reqId }, '*');
+    } catch {
+      finishFallback();
+    }
+  });
+}
+
 // Engine control buttons
 $('btnStartNapcat').addEventListener('click', async () => {
   try {
@@ -773,6 +869,18 @@ $('btnStartNapcat').addEventListener('click', async () => {
     setTimeout(() => refreshStatus().catch(() => {}), 2500);
   } catch (e) {
     showToast(`启动 NapCatQQ 失败: ${e.message}`);
+  }
+});
+
+$('btnOpenNapcatWebui')?.addEventListener('click', async (e) => {
+  if (window.self === window.top) return; // normal browser tab uses native <a target="_blank">
+  e.preventDefault();
+  const url = $('btnOpenNapcatWebui').href || state.status?.napcat?.webuiUrl || 'http://127.0.0.1:6099/webui';
+  try {
+    const via = await openExternalFromHub(url, '/api/napcat/open-webui');
+    showToast(via === 'host' ? '正在打开 NapCat 扫码登录页...' : '已通过本机浏览器打开 NapCat 扫码登录页');
+  } catch (err) {
+    showToast(`打开扫码登录页失败: ${err.message}`);
   }
 });
 
@@ -818,6 +926,20 @@ $('btnReconnectOnebot').addEventListener('click', async () => {
 
 $('btnRefreshAll').addEventListener('click', () => refreshStatus().then(() => showToast('状态已刷新')));
 $('btnRefreshTokens').addEventListener('click', () => refreshStatus());
+// Bidirectional sync for adjustable context budget controls (Tab 1 & Tab 4)
+$('cfgCtxBudgetRange')?.addEventListener('input', (e) => syncContextBudgetUi(e.target.value));
+$('cfgCtxBudget')?.addEventListener('input', (e) => syncContextBudgetUi(e.target.value));
+$('cfgModelCtxBudget')?.addEventListener('input', (e) => syncContextBudgetUi(e.target.value));
+$('cfgCtxAction')?.addEventListener('change', (e) => syncContextActionUi(e.target.value));
+$('cfgModelCtxAction')?.addEventListener('change', (e) => syncContextActionUi(e.target.value));
+$('cfgMaxPromptChars')?.addEventListener('input', (e) => syncMaxPromptCharsUi(e.target.value));
+$('cfgModelMaxPromptChars')?.addEventListener('input', (e) => syncMaxPromptCharsUi(e.target.value));
+document.querySelectorAll('.ctx-preset-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    syncContextBudgetUi(Number(btn.dataset.budget || 0));
+  });
+});
+
 $('btnSaveContextBudget').addEventListener('click', async () => {
   try {
     state.config = await api('/api/config', {
@@ -826,11 +948,15 @@ $('btnSaveContextBudget').addEventListener('click', async () => {
         acp: {
           contextBudgetTokens: Number($('cfgCtxBudget').value || 0),
           contextOverflowAction: $('cfgCtxAction').value,
-          compactCarryTurns: Number($('cfgCtxCarryTurns').value ?? 6)
+          compactCarryTurns: Number($('cfgCtxCarryTurns').value ?? 6),
+          maxPromptChars: Number($('cfgMaxPromptChars')?.value || 12000)
         }
       })
     });
-    showToast('上下文预算与压缩策略已保存并生效！');
+    syncContextBudgetUi(state.config.acp.contextBudgetTokens);
+    syncContextActionUi(state.config.acp.contextOverflowAction);
+    syncMaxPromptCharsUi(state.config.acp.maxPromptChars);
+    showToast(`上下文上限已更新为 ${formatBudgetShort(state.config.acp.contextBudgetTokens)} 并热生效！`);
     await refreshStatus();
   } catch (e) {
     showToast(`保存失败: ${e.message}`);

@@ -1,87 +1,330 @@
 # Antigravity QQ Bridge
 
-独立构建的跨端 AI 伴侣桥接系统，直接复用本机 **Google Antigravity**（`agy acp --stdio` 持久化会话）与本机 **GPT-SoVITS v5**，零商业 API 订阅依赖，内置可视化管控台 **Antigravity Hub**。
+<p align="center">
+  <strong>直接复用本机 Google Antigravity 的跨端 QQ AI 伴侣桥接系统</strong><br/>
+  持久化 <code>agy acp --stdio</code> 双通道大脑 · 可调上下文预算与无感记忆压缩 · 原生视觉 / GIF 分镜 / 合并转发 / B站热评解析 · 三层活体世界书与梗百科 · GPT-SoVITS v5 情感语音 · Antigravity Hub 可视化管控台
+</p>
 
-## 核心功能一览
-
-- **持久化 ACP 双通道大脑 (`agy acp --stdio`)**：双进程零冷启动长连接，支持**双模型分流**（私聊主人工作区模型 + 群聊 `--sandbox` 沙盒模型），私聊、各群聊彼此独立上下文。
-- **256K 上下文预算与无感记忆压缩接力（方案 A）**：单会话默认 `256,000` tokens 预算；达标后在回复发出后的后台静默整理《前情记忆交接单》（归档至 `data/session-summaries/` 并持久化防重启丢失），连同最近 6 轮原话无缝接力进清爽新会话（支持 Hub 进度条查看、切换方案 B/C 及手动 `/压缩`）。
-- **三层查梗与活体世界书 (`data/lorebook.db` + `data/memes.db`)**：
-  - **L1 活体世界书**（最高优先）：群友黑话、个人设定与魔改热梗，兼容 SillyTavern 🔵蓝灯常驻 / 🟢绿灯关键词 / 次级过滤 / 优先级 / 会话冷却去重、分群作用域隔离与 ST World Info JSON 双向导入/导出；
-  - **L2 只读公共梗百科**（可选，6,792+ 词条，源自 [dsh-memewiki](https://github.com/thawline/dsh-memewiki) / `cnmeme.wiki`，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）：内存检索 `<1ms`、优先注入「怎么用/怎么接」方便直接入戏玩梗，支持 Hub 内检索、**一键复制到 L1 魔改**、**0-Token 增量同步**（[scripts/sync-cnmeme.mjs](scripts/sync-cnmeme.mjs)），并配备 **0–100「串子程度」** 玩梗尺度滑杆；
-  - **L3 联网兜底回流**：L1/L2 都未命中时按需联网搜索（`search_web`），查完自动通过隐藏 `[词条:...]` 无感收录进 L1。
-- **全场景原生视觉识图、合并转发与 B 站卡片解析**：
-  - QQ 私聊/群聊发图、引用图、以及潜水期间刚发出的近期旁听图自动喂入模型原生多模态通道；
-  - 动态 GIF 自动用 FFmpeg 拼成带序号的 `2×1`/`3×1`/`2×2`/`3×2` 时序分镜连环画（不丢动作演变与结尾反转，表情库仍存原始动图）；
-  - 收到 QQ **合并转发聊天记录**（直发、引用或 90 秒内旁听转发）自动经 `get_forward_msg` 安全展开多条文字、图片/动图与 B 站链接；
-  - 收到 QQ 分享卡片 / B 站小程序或 `b23.tv`/BV 链接时，自动解析封面图、真实 UP 主、完整简介、标签数据、UP 主置顶与高赞热评（纯只读接口 + 严格防 SSRF 与提示词注入过滤）。
-- **OneBot v11 协议适配 & 防风控**：适配 **NapCatQQ**，同时支持 **Forward WS**（默认 `ws://127.0.0.1:13001`）与 **Reverse WS**；内置 `2.5s` 智能防抖合流窗口、`0.45s` 长文分段拟人延时、`90s` 重复去重、友商 AI 防互刷与称呼避让、连续静默自动退窗与风控自动退避。
-- **Owner Guard 4 层权限隔离**：`ownerUsers` 白名单私聊可放行本机 Antigravity 工具能力；群聊强制走 `--sandbox` 独立空目录子进程 + `session/request_permission` 硬拦截（仅放行只读表情包手册与公共世界书目录，及安全只读联网搜索 `search_web`）。
-- **GPT-SoVITS v5 情感声线与文字秒发/语音异步补发**：独立运行于 `19880` 端口（配置模板见 [tts_infer_v5dev.example.yaml](tts_infer_v5dev.example.yaml)），完整透传 13 项 v5 推理参数，上线/切权重自动预热 CUDA；双轨模式下**文字与表情秒发，语音后台串行合成后无感补发**，配合 `SHA-256` 秒回缓存。
-- **5 维表情包卡片库 (`data/stickers.db`)**：支持自动同步机器人 QQ 收藏表情、Gemini 视觉鉴图收藏、5 维梗图卡片建档与按需只读手册 `data/sticker-catalog.md`（平时 0 上下文占用）、以及 `2-gram` 兜底检索。
-- **Antigravity Hub 可视化管控台 & 侧边栏插件**：涵盖模型与人格工坊、声线试听与 13 参数调优、权限开关矩阵、Token 吞吐与 256K 压缩进度监控、表情包仓库、世界书与梗库管理、以及免连 QQ 端到端联调演练场；附带 Antigravity 侧边栏插件源码 [plugins/agyqq-hub](plugins/agyqq-hub/README.md)。
+<p align="center">
+  <img alt="Node.js >= 22.13" src="https://img.shields.io/badge/Node.js-%3E%3D22.13.0-339933?logo=node.js&logoColor=white" />
+  <img alt="OneBot v11" src="https://img.shields.io/badge/Protocol-OneBot%20v11-12B7F5" />
+  <img alt="Runtime Deps: 1" src="https://img.shields.io/badge/Runtime%20Deps-1%20(ws)-blue" />
+  <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-green" />
+</p>
 
 ---
 
-## 环境要求与快速上手
+## 目录
 
-- **Node.js `>= 22.13.0`**（使用内置 `node:sqlite`，仅 1 个外部运行依赖 `ws`）
-- 本机已安装并登录 **Google Antigravity CLI (`agy`)**
-- OneBot v11 协议端（推荐 [NapCatQQ](https://github.com/NapNeko/NapCatQQ)，可放置于项目 `napcat/` 目录）
-- 可选：**FFmpeg**（用于 GIF 动态分镜，配置 `vision.ffmpegPath` 或加入系统 `PATH`）
-- 可选：**GPT-SoVITS v5**（用于 6 情感真人语音合成）
+- [项目简介](#项目简介)
+- [系统架构](#系统架构)
+- [核心功能特性](#核心功能特性)
+- [环境要求](#环境要求)
+- [安装与配置](#安装与配置)
+- [启动方式](#启动方式)
+- [Antigravity 侧边栏插件](#antigravity-侧边栏插件)
+- [常用 QQ 指令](#常用-qq-指令)
+- [项目结构](#项目结构)
+- [测试与诊断](#测试与诊断)
+- [安全与隐私设计](#安全与隐私设计)
+- [鸣谢 / Acknowledgments](#鸣谢--acknowledgments)
+- [开源许可与免责声明](#开源许可与免责声明)
 
-### 安装与初始化
+---
 
-```powershell
-# 1. 安装依赖
-npm install
+## 项目简介
 
-# 2. 复制并按需编辑主配置（不会提交进 Git）
-Copy-Item config.example.json config.json
+**Antigravity QQ Bridge** 是一套轻量、独立部署的 QQ AI 伴侣桥接系统：
 
-# 3. 如启用 GPT-SoVITS v5，复制推理配置模板并填入你本机的底模路径，
-#    再将 6 情感参考音频放到 audio_clip/ 目录（平静/温柔/开心/调皮/委屈/疑问.wav）
-Copy-Item tts_infer_v5dev.example.yaml tts_infer_v5dev.yaml
+- **零额外商业 API 订阅依赖**：直接常驻调用你本机已登录的 **Google Antigravity CLI**（`agy acp --stdio` 持久化会话），开机握手一次即可长连接复用，彻底告别逐条冷启动延迟。
+- **极致轻量与透明可控**：基于 Node.js `>=22.13.0` 内置 `node:sqlite` 与原生模块，整个核心**仅有 1 个外部运行时依赖（`ws`）**，所有数据、会话记忆与配置全部保存在你自己的电脑本地。
+- **既懂群聊氛围又守安全底线**：私聊主人通道可按需调用本机工具协助开发，群聊通道强制运行于独立 `--sandbox` 沙盒并执行 4 层权限硬拦截；同时兼顾自然群聊接话节奏、防风控合流、友商机器人防互刷与全场景看图玩梗。
+- **开箱即用的可视化控制台（Antigravity Hub）**：所有模型、人格、上下文上限、权限白名单、声线参数、世界书/梗库、表情仓库与免连 QQ 演练场都支持浏览器或 Antigravity 侧边栏实时热更新。
+
+---
+
+## 系统架构
+
+```mermaid
+flowchart LR
+    QQ["QQ 客户端 / 群聊 / 私聊"] <--> NapCat["OneBot v11 协议端 (NapCatQQ)"]
+    NapCat <-->|"Forward / Reverse WS"| Engine["Bridge Engine (防风控合流 · 权限隔离 · 旁听缓冲)"]
+
+    Engine --> Media["多模态解析 (原图 / GIF分镜 / 合并转发 / B站热评)"]
+    Engine --> Lore["三层世界书与梗库 (L1 SQLite · L2 梗百科 · L3 联网回流)"]
+    Engine --> Stickers["5维表情包仓库 (SQLite 2-gram · 视觉鉴图)"]
+    Engine --> TTS["GPT-SoVITS v5 (6情感声线 · 异步补发 · SHA-256缓存)"]
+
+    Engine <--> OwnerACP["Owner ACP Worker (私聊工作区模型)"]
+    Engine <--> GroupACP["Group ACP Worker (--sandbox 群聊沙盒模型)"]
+
+    Hub["Antigravity Hub WebUI (:3200)"] <-->|"REST API / SSE"| Engine
+    Plugin["Antigravity 侧边栏插件 (agyqq-hub MCP App)"] <-->|"iframe + openLink 桥接"| Hub
 ```
 
-> **可选 · 启用 L2 6,792+ 离线梗百科**：
-> 本仓库不含 16MB 二进制词库文件。从 [dsh-memewiki](https://github.com/thawline/dsh-memewiki) 获取 `data/memes.db` 放入本项目 `data/memes.db` 后即自动启用，后续可在 Hub 面板内一键增量同步或运行 `node scripts/sync-cnmeme.mjs --no-existing`。
+---
 
-### 启动服务
+## 核心功能特性
 
-- **仅启动桥接核心**：运行 `npm start` 或双击 [start.bat](start.bat)
-- **一键联合启动（NapCatQQ + GPT-SoVITS v5 + Bridge + 自动打开控制台）**：
-  双击 [start-all.bat](start-all.bat) 或运行 `.\start-agyqq.ps1 -WithNapCat -WithSovits -OpenHub`
-- 启动后从终端输出或 `data/hub-token.txt` 获取一次性访问令牌，打开 `http://127.0.0.1:3200/?token=<你的Token>` 进入 **Antigravity Hub**，在 **群聊与权限防护** 页填入 `ownerUsers` 与测试群白名单即可开始使用。
+### 1. 双通道持久化 ACP 大脑 & 可调上下文预算
+- **私聊 / 群聊双进程分流**：独立维护主人工作区通道与群聊 `--sandbox` 沙盒通道，可分别配置模型与思考强度，私聊与各个群聊会话上下文完全隔离。
+- **可调上下文上限（16K – 2M / 不限）**：支持在 Antigravity Hub 的「模型与人格」与「Token 与会话」面板中通过滑块、快捷档位（`64K` / `128K` / `256K` / `512K` / `1M` / `不限`）或自定义数值实时热更新单会话预算与单轮字符上限（`maxPromptChars`），无需重启服务。
+- **无感记忆压缩接力（方案 A）**：达到上下文预算后，在回复发出后的后台静默整理《前情记忆交接单》（归档至 `data/session-summaries/` 并落盘防重启丢失），连同最近若干轮原话无缝接力至清爽新会话；亦支持切换方案 B/C、清空或手动 `/压缩`。
+
+### 2. 全场景原生视觉、GIF 分镜、合并转发与 B 站热评解析
+- **原生识图与 6 小时旁听补图**：自动将直发图、引用图、以及群聊潜水期间 6 小时内带有 `[HH:MM]` 时间戳的背景聊天气氛与近期图片带入上下文；遇到“他刚发的是什么梗”“上面那张图怎么看”等回指表达时自动补带对应历史图，闲聊打招呼不误带。
+- **动态 GIF 时序分镜**：借助本机 FFmpeg 将动态表情/动图自动拼接为带编号的 `2×1` / `3×1` / `2×2` / `3×2` 连环画，完整保留动作演变与结尾反转（表情库仍完整保存原始 GIF）。
+- **QQ 合并转发安全展开**：直发、引用或近期旁听的 QQ 合并转发记录自动经 `get_forward_msg` 展开（限深 2 层、限条数与字符防爆上下文），连同转发内的编号图片、动图与 B 站链接一并送入多模态通道。
+- **B 站卡片与链接深度解析**：收到 B 站 QQ 小程序分享卡片、`b23.tv` 短链或 `BV` 号时，并行拉取封面图、真实 UP 主、完整简介、播放/点赞/投币/收藏/弹幕数据、UP 主置顶评论与高赞热评（纯只读公开接口 + 严格 SSRF 与提示词注入防线）。
+
+### 3. 三层查梗与活体世界书
+- **L1 活体世界书（最高优先，`data/lorebook.db`）**：存放群友黑话、角色自设与魔改热梗；兼容 SillyTavern 🔵蓝灯常驻 / 🟢绿灯关键词 / 次级过滤 / 优先级 / 会话冷却去重 / 分群作用域隔离，支持 SillyTavern World Info JSON 双向导入与导出。
+- **L2 只读公共梗百科（可选，`data/memes.db`）**：兼容 [dsh-memewiki](https://github.com/thawline/dsh-memewiki) / `cnmeme.wiki` 6,792+ 词条，内存检索 `<1ms`，优先注入「怎么用/怎么接」方便自然入戏；支持 Hub 内搜索、一键复制到 L1 魔改、0-Token 增量同步（`scripts/sync-cnmeme.mjs`），并内置 **0–100「串子程度」** 玩梗风格滑杆。
+- **L3 联网兜底回流**：L1/L2 均未命中时按需触发安全只读联网搜索（`search_web`），查完自动通过隐藏标记无感收录进 L1，越聊越懂群。
+
+### 4. OneBot v11 防风控 & 自然群聊节奏
+- 完整适配 **NapCatQQ**，同时支持 **Forward WS**（默认 `ws://127.0.0.1:13001`）与 **Reverse WS**。
+- 内置 `2.5s` 智能防抖合流窗口、多发言人合流精准聚焦、长文拟人分段延时、`90s` 重复去重与触发风控自动退避。
+- 群聊支持被 `@` / 回复 / 关键词唤醒后的**活跃跟聊窗口**、连续 `[静默]` 自动退窗、以及**友商机器人防互刷**（`peerBotUsers` 仅旁听不跟聊 + `peerBotNames` 称呼避让）。
+
+### 5. Owner Guard 4 层权限隔离
+- `ownerUsers` 白名单私聊可选择性放行本机 Antigravity 工作区工具能力。
+- 所有群聊与非主人私聊强制走独立空目录 `--sandbox` 子进程，并在 `session/request_permission` 层硬拦截本机工具调用，仅放行只读表情包/世界书手册与只读联网搜索 `search_web`。
+
+### 6. GPT-SoVITS v5 六情感声线 & 5 维表情包仓库
+- **双轨语音极速体验**：文字与表情包立即发出，语音在后台串行合成后无感补发，彻底消除等待焦虑；完整支持 6 情感参考音频、13 项 v5 推理参数热调、上线/切权重自动预热 CUDA 与 `SHA-256` 秒回缓存。
+- **5 维表情包卡片库（`data/stickers.db`）**：支持自动同步 QQ 收藏表情、视觉鉴图自动筛选、按需读取目录手册 `data/sticker-catalog.md`（平时 0 上下文占用）与 `2-gram` 中文检索兜底。
+
+### 7. Antigravity Hub 管控台 & 侧边栏插件
+- 8 大功能页签覆盖全链路：总览与 NapCatQQ 扫码登录、模型与人格（含上下文上限滑块）、GPT-SoVITS 声线试听、群聊权限矩阵、Token 吞吐与上下文压缩进度、表情包仓库、活体世界书与 L2 梗百科、免连 QQ 端到端演练场。
+- 附带 **Antigravity IDE 侧边栏插件**（`plugins/agyqq-hub`）：一键在侧边栏拉起 Hub、自动守护本地服务，且在侧边栏内可直接点击「打开扫码登录」调起系统浏览器访问本机 NapCatQQ WebUI。
+
+---
+
+## 环境要求
+
+| 组件 | 要求 | 说明 |
+| :--- | :--- | :--- |
+| **Node.js** | `>= 22.13.0`（必选） | 使用内置 `node:sqlite` 与 `node:test`，外部运行时依赖仅 `ws` |
+| **Google Antigravity CLI (`agy`)** | 已安装并完成账号登录（必选） | 提供 `agy acp --stdio` 持久化会话通道 |
+| **OneBot v11 协议端** | 推荐 [NapCatQQ](https://github.com/NapNeko/NapCatQQ)（必选） | 可独立部署或放入本仓库 `napcat/` 目录（已加入 `.gitignore`） |
+| **FFmpeg** | 可选，强烈推荐 | 用于动态 GIF 时序分镜；加入系统 `PATH` 或配置 `vision.ffmpegPath` |
+| **GPT-SoVITS v5** | 可选 | 需要六情感真人语音合成时部署，独立监听 `19880`（可自动探测备选端口） |
+| **L2 梗百科词库 (`data/memes.db`)** | 可选 | 16MB 离线词库，未随仓库分发，按需从 `dsh-memewiki` 放入即自动启用 |
+
+> **平台说明**：核心 Node.js 服务、测试套件与 Hub WebUI 跨平台支持 Windows / macOS / Linux；仓库根目录的一键批处理/PowerShell 启动脚本（`.bat` / `.ps1`）面向 Windows，macOS / Linux 用户可直接使用 `npm start` 启动核心服务。
+
+---
+
+## 安装与配置
+
+### 第 1 步：克隆仓库并安装依赖
+
+```powershell
+git clone https://github.com/<你的用户名>/antigravity-qq-bridge.git
+cd antigravity-qq-bridge
+npm install
+```
+
+### 第 2 步：初始化主配置文件
+
+```powershell
+# Windows PowerShell
+Copy-Item config.example.json config.json
+
+# macOS / Linux
+cp config.example.json config.json
+```
+
+> `config.json` 已加入 `.gitignore`，不会提交到 Git。建议先通过 `npm start` 启动后在 **Antigravity Hub** 网页可视化编辑，或直接修改 `config.json` 中最关键的几项：
+> - `guard.ownerUsers`：填入主人的 QQ 号数组（例如 `["123456789"]`）
+> - `guard.allowGroups`：填入允许响应的测试群号白名单
+> - `acp.ownerModel` / `acp.groupModel`：按本机 `agy` 可用模型选择私聊与群聊模型
+> - `acp.contextBudgetTokens`：默认 `256000`（支持 `16000`–`2097152`，填 `0` 表示不限）
+> - `onebot.wsUrl` / `onebot.httpUrl` / `onebot.accessToken`：与你的 NapCatQQ OneBot v11 端口和鉴权一致
+
+### 第 3 步：配置 OneBot v11（NapCatQQ）
+
+1. 按 [NapCatQQ 官方文档](https://github.com/NapNeko/NapCatQQ) 部署 NapCatQQ（若希望使用一键联合启动脚本，可将其放在项目根目录的 `napcat/` 下并提供 `napcat/start-napcat.ps1`）。
+2. 在 NapCatQQ WebUI（默认 `http://127.0.0.1:6099/webui`）中开启：
+   - **WebSocket 服务端**：`127.0.0.1:13001`（对应 `onebot.mode: "forward-ws"`，也支持切换为 `reverse-ws`）
+   - **HTTP 服务端**：`127.0.0.1:13000`（用于查询状态等辅助接口）
+3. 扫码登录你的机器人 QQ 账号即可。
+
+### 第 4 步（可选）：启用 GPT-SoVITS v5 六情感语音
+
+1. 复制推理配置模板并填入你本机的 GPT-SoVITS v5 底模路径：
+   ```powershell
+   Copy-Item tts_infer_v5dev.example.yaml tts_infer_v5dev.yaml
+   ```
+2. 在 `config.json` 中设置 `tts.sovitsRoot`（指向你本机 GPT-SoVITS v5 目录，也可通过环境变量 `GPT_SOVITS_ROOT` 指定）。
+3. 将 6 段情感参考音频放入项目根目录的 `audio_clip/`（默认命名：`平静.wav`、`温柔.wav`、`开心.wav`、`调皮.wav`、`委屈.wav`、`疑问.wav`），并在 `config.json` 或 Hub 声线页填写对应的 `promptText`。
+4. 若暂时不需要语音或希望释放显存，可在 Hub「声线与语音」页关闭 TTS 或直接不启动 SoVITS 后端，桥接核心会自动纯文字流畅运行。
+
+### 第 5 步（可选）：启用 L2 6,792+ 离线梗百科
+
+仓库本身不包含二进制词库文件。启用步骤：
+
+1. 从 [thawline/dsh-memewiki](https://github.com/thawline/dsh-memewiki) 获取 `memes.db`，放到本项目 `data/memes.db`（或直接运行下方命令全量/增量拉取）。
+2. 后续可随时在 Hub 的「世界书与梗库」页点击**一键增量同步**，或在终端执行：
+   ```powershell
+   node scripts/sync-cnmeme.mjs --no-existing
+   ```
+
+---
+
+## 启动方式
+
+### 方式 A：直接启动核心桥接服务（跨平台通用）
+
+```powershell
+npm start
+# 或在 Windows 上双击 start.bat
+```
+
+### 方式 B：Windows 一键联合启动（PowerShell / 批处理）
+
+双击 [`start-all.bat`](start-all.bat) 可同时拉起 NapCatQQ + GPT-SoVITS v5 + Bridge 并自动在浏览器打开 Antigravity Hub；也可通过 PowerShell 按需组合开关：
+
+```powershell
+# 仅启动 Bridge 并自动打开控制台
+.\start-agyqq.ps1 -OpenHub
+
+# 同时拉起内置 NapCatQQ + Bridge（不启动语音后端，省显存）
+.\start-agyqq.ps1 -WithNapCat -OpenHub
+
+# 指定快捷登录 QQ 并全量启动（NapCatQQ + GPT-SoVITS v5 + Bridge + Hub）
+.\start-agyqq.ps1 -WithNapCat -WithSovits -OpenHub -QuickLoginQQ 123456789
+```
+
+停止 Bridge 服务（Windows）：
+
+```powershell
+.\stop-agyqq.ps1
+```
+
+### 首次访问 Antigravity Hub 控制台
+
+- 首次启动会自动生成随机访问令牌并写入 `data/hub-token.txt`（同时打印在终端日志中）；你也可以在 `config.json` 的 `hub.token` 中固定自己的本地令牌。
+- 在浏览器打开：`http://127.0.0.1:3200/?token=<你的Token>`
+- 进入后先到 **「群聊与权限防护」** 添加主人 QQ（`ownerUsers`）与允许响应的群号（`allowGroups`），再到 **「总览」** 点击「打开扫码登录」确认 NapCatQQ 在线即可开始聊天。
+
+---
+
+## Antigravity 侧边栏插件
+
+仓库内置了完整的 Antigravity IDE 侧边栏 MCP App 插件源码（[`plugins/agyqq-hub`](plugins/agyqq-hub/README.md)）：
+
+```powershell
+# 1. 复制插件到 Antigravity 插件目录（Windows 默认路径）
+$Target = "$env:USERPROFILE\.gemini\config\plugins\agyqq-hub"
+Copy-Item -Recurse -Force "plugins\agyqq-hub" $Target
+
+# 2. 安装依赖并打包前端资源
+Set-Location $Target
+npm install
+npm run build
+```
+
+如果主项目目录与插件默认相对路径不同，可在该插件的 `mcp_config.json` 中为 `env.AGYQQ_BRIDGE_DIR` 填入你的项目根目录路径。重启或重载插件后，即可在 Antigravity 侧边栏直接打开控制台，并支持：
+- 自动检测并后台拉起未运行的 Bridge / NapCatQQ / GPT-SoVITS v5；
+- 在侧边栏中直接点击「打开扫码登录」调起系统浏览器打开 NapCatQQ WebUI（通过 MCP App `openLink` 桥接，并带本机 `localhost` 回退兜底）。
 
 ---
 
 ## 常用 QQ 指令
 
-- `/new` 或 `/reset`：彻底清空当前会话的 ACP 上下文记忆
-- `/压缩` 或 `/compact`：手动整理《前情记忆交接单》并切入清爽新会话（不断片）
-- `/安静`（或 `/闭麦`、`/潜水`）：立即结束当前群聊的活跃跟聊窗口，恢复待机潜水
-- `/status`：查看通道模式、当前模型、ACP 延迟、上下文预算进度、语音缓存、表情库与世界书/梗百科数量
-- `/记梗 关键词1,关键词2 | 释义`（或 `/记黑话`、`/记词条`）：手动收录词条进 L1 世界书
-- `/查书 [关键词]`（或 `/世界书`）：查询公共及当前聊天作用域的世界书词条
-- `/删词条 #ID`：删除指定编号的世界书词条
-- `/存表情 标签1 标签2`：附带图片或引用图片消息入库（自动 SHA-256 去重与 2-gram 索引）
-- `/表情库 [搜索词]`：查询表情包库
-- `/救大命`：无视冷却立刻发一张应急斗图表情
-- `/语音 [情绪] 台词`：调用 GPT-SoVITS v5 合成并发送语音条
+| 指令 | 别名 | 作用说明 |
+| :--- | :--- | :--- |
+| `/status` | — | 查看当前通道模式、活跃跟聊窗状态、模型、ACP 延迟、上下文预算占用、语音缓存、表情库与世界书统计 |
+| `/new` | `/reset` | 彻底清空当前会话的 ACP 上下文记忆并重置群聊活跃状态 |
+| `/压缩` | `/compact` | 手动生成《前情记忆交接单》并切入清爽新会话（保留前情摘要与近期原话，不断片） |
+| `/安静` | `/闭麦`、`/潜水` | 立即结束当前群聊的活跃跟聊窗口，恢复潜水待机 |
+| `/记梗 词1,词2 \| 释义` | `/记黑话`、`/记词条` | 手动录入词条到 L1 活体世界书（支持前缀 `全局\|` 或 `本群\|` 指定作用域） |
+| `/查书 [关键词]` | `/世界书` | 查询公共与当前聊天作用域下生效的 L1 世界书词条 |
+| `/删词条 #ID` | — | 删除指定编号的世界书词条（非主人仅可删除本群专属词条） |
+| `/存表情 标签1 标签2` | — | 附带图片或引用图片消息入库（SHA-256 自动查重并建立 2-gram 索引） |
+| `/表情库 [搜索词]` | — | 检索表情包库统计与匹配条目 |
+| `/救大命` | — | 无视表情冷却时间，立刻发送一张应急斗图 |
+| `/语音 [情绪] 台词` | — | 指定情感（`平静`/`温柔`/`开心`/`调皮`/`委屈`/`疑问`）合成并发送语音条 |
 
 ---
 
-## 测试与诊断命令
+## 项目结构
 
-```powershell
-npm test           # 运行全部 43 项单元测试（安全隔离与防互刷 / 防风控合流 / 表情库 / L1世界书 / L2梗百科与串子尺度 / 256K压缩 / TTS缓存与异步补发 / B站卡片解析 / 合并转发与旁听补图 / GIF分镜 / OneBot / Hub API）
-npm run test:e2e   # 运行真实 agy acp --stdio 端到端集成测试
-npm run probe:acp  # 单测本机 agy acp 握手与多模态
-npm run probe:tts  # 单测本机 GPT-SoVITS v5 连通性与 SHA-256 缓存
+```text
+.
+├── src/
+│   ├── index.js                 # 主入口：加载配置、启动 BridgeEngine 与 HubServer
+│   ├── acp/                     # agy acp --stdio 持久化进程与多会话/压缩接力管理
+│   ├── config/                  # 配置校验/热更新（含上下文上限 16K–2M / 0 不限）与代理探测
+│   ├── engine/                  # 核心消息流转、命令路由、6h 旁听缓冲与双轨异步回复
+│   ├── guard/                   # Owner Guard 四层隔离、智能合流窗口与风控限流分段
+│   ├── lorebook/                # L1 活体世界书（ST 兼容）与 L2 只读梗百科检索
+│   ├── media/                   # 原生视觉拉取、FFmpeg GIF 分镜与 B 站公开接口解析
+│   ├── metrics/                 # SQLite Token 与延迟统计面板存储
+│   ├── onebot/                  # OneBot v11 双模式 WS 客户端、消息解析、合并转发展开与 NapCat 管理
+│   ├── stickers/                # 5 维表情包卡片库、SQLite 2-gram 索引与视觉鉴图
+│   ├── tts/                     # GPT-SoVITS v5 客户端、13 参数透传、情绪解析与 SHA-256 缓存
+│   └── web/                     # Antigravity Hub 本地服务端与前端 SPA（index.html / app.js / styles.css）
+├── plugins/agyqq-hub/           # Google Antigravity 侧边栏 MCP App 插件源码
+├── scripts/                     # ACP / TTS 探针与 cnmeme.wiki 增量同步脚本
+├── tests/                       # 单元测试与真实 ACP E2E 集成测试
+├── config.example.json          # 脱敏主配置模板（实际运行配置 config.json 已忽略）
+├── tts_infer_v5dev.example.yaml # GPT-SoVITS v5 推理配置模板
+├── start-agyqq.ps1 / .bat       # Windows 一键启动与停止脚本
+├── CHANGELOG.md                 # 版本更新日志
+├── THIRD_PARTY_NOTICES.md       # 第三方组件与词库归属声明
+└── LICENSE                      # MIT License
 ```
 
-## 开源许可与第三方致谢
+> **本地运行数据均已列入 `.gitignore`**：`config.json`、`tts_infer_v5dev.yaml`、`data/`（SQLite 数据库、会话归档、语音与表情缓存、日志与 Hub 令牌）、`napcat/`、`audio_clip/`、`node_modules/` 与插件构建产物均不会被 Git 跟踪。
 
-本项目基于 [MIT License](LICENSE) 开源；第三方项目与公共词库归属声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+---
+
+## 测试与诊断
+
+```powershell
+# 运行全部单元测试（权限隔离、防风控合流、表情库、L1 世界书、L2 梗百科、上下文预算与压缩、
+# TTS 缓存与异步补发、B 站解析、合并转发与旁听补图、GIF 分镜、OneBot 客户端、Hub API）
+npm test
+
+# 运行真实本机 agy acp --stdio 端到端集成测试
+npm run test:e2e
+
+# 单项探测本机 ACP 通道握手与多模态能力
+npm run probe:acp
+
+# 单项探测本机 GPT-SoVITS v5 连通性与 SHA-256 缓存
+npm run probe:tts
+```
+
+---
+
+## 安全与隐私设计
+
+- **严格本地优先**：Hub 默认仅绑定 `127.0.0.1:3200`，全部接口强制 Bearer / Header / Cookie 令牌鉴权。
+- **防越权浏览器拉起**：`/api/napcat/open-webui` 仅由服务端读取本机 NapCat 状态生成 URL，忽略任何客户端传入地址，并硬性限制仅允许 `http(s)://127.0.0.1` 或 `localhost`。
+- **防 SSRF 与提示词注入**：图片抓取与 B 站公开接口解析均限定可信域名与协议；群聊写入世界书与外部网页/评论内容均经过注入检测与边界隔离。
+- **群聊零本机工具泄露**：群聊运行于独立空目录 `--sandbox` 进程并拦截所有文件/终端权限请求，防止陌生群友通过话术套取主机环境或执行命令。
+
+---
+
+## 鸣谢 / Acknowledgments
+
+本项目的实现离不开以下优秀的开源项目、协议生态与社区资料，特此致谢：
+
+- **[Google Antigravity](https://antigravity.google/)** & **Agent Client Protocol (ACP)** & **Model Context Protocol (MCP Apps)** — 提供强大的本机持久化多模态 Agent 运行时与 IDE 侧边栏扩展能力。
+- **[NapCatQQ](https://github.com/NapNeko/NapCatQQ)** & **[OneBot v11](https://github.com/botuniverse/onebot-11)** — 提供稳定、现代的 QQ 协议接入层与标准化事件/接口规范。
+- **[GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)**（`RVC-Boss/GPT-SoVITS`） — 提供高质量、可本地部署的少样本情感语音合成引擎（v5）。
+- **[dsh-memewiki](https://github.com/thawline/dsh-memewiki)**（MIT License）、`astrbot_plugin_memewiki`（by `in1t1a1`）与 **[cnmeme.wiki](https://cnmeme.wiki)** — 为 L2 离线梗百科结构设计、词库检索体验与增量同步方案提供灵感与公共数据支持（详见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)）。
+- **[SillyTavern](https://github.com/SillyTavern/SillyTavern)** — 启发了 L1 活体世界书的蓝绿灯触发、次级过滤与 World Info JSON 兼容格式。
+- **[FFmpeg](https://ffmpeg.org/)** — 提供可靠的动态 GIF 抽帧与时序分镜拼接能力。
+- **[Node.js](https://nodejs.org/)**（内置 `node:sqlite` / `node:test`）与 **[ws](https://github.com/websockets/ws)** — 让整套桥接核心得以保持单外部依赖的极致轻量化。
+
+---
+
+## 开源许可与免责声明
+
+- 本项目基于 **[MIT License](LICENSE)** 开源发布；第三方项目与词库归属声明请查阅 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+- **免责声明**：本项目仅用于个人学习、本地开发辅助与合规的个人社交娱乐体验。请遵守 QQ 及各第三方平台与模型服务的使用条款，切勿将本项目用于骚扰刷屏、恶意抓取或任何违反法律法规与平台规则的用途。

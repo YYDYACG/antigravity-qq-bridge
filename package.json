@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Antigravity QQ Bridge - Persistent agy acp --stdio bridge with OneBot v11 anti-ban, Owner Guard, GPT-SoVITS v5 6-emotion TTS cache, SQLite 2-gram stickers, and Antigravity Hub WebUI.",
+  "description": "Antigravity QQ Bridge - Persistent agy acp --stdio QQ companion bridge with OneBot v11 anti-ban, Owner Guard, adjustable context budget (16K-2M/unlimited), Living Lorebook & MemeWiki, Bilibili/Forward/GIF vision, GPT-SoVITS v5 TTS, and Antigravity Hub.",
   "engines": {
     "node": ">=22.13.0"
   },
