@@ -111,7 +111,7 @@ flowchart LR
 | :--- | :--- | :--- |
 | **Node.js** | `>= 22.13.0`（必选） | 使用内置 `node:sqlite` 与 `node:test`，外部运行时依赖仅 `ws` |
 | **Google Antigravity 2.0 / CLI (`agy`)** | 已安装并完成账号登录（必选） | 提供 `agy acp --stdio` 持久化会话通道；AGY 2 桌面端还支持侧边栏插件 |
-| **OneBot v11 协议端** | 推荐 [NapCatQQ](https://github.com/NapNeko/NapCatQQ)（必选） | 可独立部署或放入本仓库 `napcat/` 目录（已加入 `.gitignore`） |
+| **OneBot v11 协议端** | 自备 NapCatQQ 或任意标准 OneBot v11 协议端（必选） | **提示**：`NapNeko/NapCatQQ` 原仓库已进入 `Ending` 停更状态，本仓库不包含协议端本体。目前仅实测过 NapCatQQ，其他标准 OneBot v11 协议端未实机验证（差异见下方说明） |
 | **FFmpeg** | 可选，强烈推荐 | 用于动态 GIF 时序分镜；加入系统 `PATH` 或配置 `vision.ffmpegPath` |
 | **GPT-SoVITS v5** | 可选 | 需要六情感真人语音合成时部署，独立监听 `19880`（可自动探测备选端口） |
 | **L2 梗百科词库 (`data/memes.db`)** | 可选 | 离线公共梗词库，未随仓库分发，可通过安装程序一键同步或自行放入 |
@@ -128,10 +128,10 @@ flowchart LR
 
 ```text
 请帮我把当前仓库（或先克隆 https://github.com/YYDYACG/antigravity-qq-bridge.git 到本地目录）的 Antigravity QQ Bridge 完整安装并初始化好：
-1. 先检查本机 Node.js（需 >= 22.13.0）、agy CLI、FFmpeg 以及是否已有 NapCatQQ / GPT-SoVITS v5 环境，并把检测结果告诉我。
+1. 先检查本机 Node.js（需 >= 22.13.0）、agy CLI、FFmpeg 以及是否已有 NapCatQQ（或其他 OneBot v11 协议端）/ GPT-SoVITS v5 环境，并把检测结果告诉我。
 2. 安装前先问我这几个必要信息：我的主人 QQ 号、要开启的测试群号、伴侣名字，以及是否需要顺便安装 Antigravity 2.0 (AGY 2) 侧边栏插件、GPT-SoVITS v5 语音模板或 L2 离线梗百科。
 3. 拿到我的回答后，直接运行内置安装程序 `node scripts/install.mjs --yes ...`（按我选的开关传入 `--owner-qq`、`--group-id`、`--persona-name`、`--with-plugin`、`--with-sovits`、`--with-memewiki` 等参数）；如果本机已有 `config.json`，务必保留原配置不要覆盖。
-4. 安装完成后跑一次 `npm test` 验证环境无误，并告诉我 Antigravity Hub 的访问地址、怎么连接 NapCatQQ 扫码登录，以及如何启动服务。
+4. 安装完成后跑一次 `npm test` 验证环境无误，并告诉我 Antigravity Hub 的访问地址、怎么连接 OneBot v11 协议端（如自备的 NapCatQQ），以及如何启动服务。
 ```
 
 ---
@@ -168,7 +168,7 @@ node scripts/install.mjs --yes --with-plugin --dry-run
 node scripts/install.mjs --help
 ```
 
-> 安装程序默认**永不覆盖已存在的 `config.json`**（若需重置模板可显式传入 `--force-config`）。装完后仅需确保你的 OneBot v11 协议端（NapCatQQ）已按下方端口配置并扫码登录即可使用。
+> 安装程序默认**永不覆盖已存在的 `config.json`**（若需重置模板可显式传入 `--force-config`）。装完后仅需确保你自备的 OneBot v11 协议端（NapCatQQ 或其他标准协议端）已按下方端口配置并登录即可使用。
 
 ---
 
@@ -194,15 +194,23 @@ Copy-Item config.example.json config.json
 - `guard.allowGroups`：允许响应的测试群号白名单
 - `acp.ownerModel` / `acp.groupModel`：按本机 `agy` 可用模型选择私聊与群聊模型
 - `acp.contextBudgetTokens`：默认 `256000`（支持 `16000`–`2097152`，填 `0` 表示不限）
-- `onebot.wsUrl` / `onebot.httpUrl` / `onebot.accessToken`：与你的 NapCatQQ OneBot v11 端口和鉴权一致
+- `onebot.wsUrl` / `onebot.httpUrl` / `onebot.accessToken`：与你的 OneBot v11 协议端端口和鉴权一致
 
-#### 第 2 步：配置 OneBot v11（NapCatQQ）
+#### 第 2 步：配置 OneBot v11 协议端
 
-1. 按 [NapCatQQ 官方文档](https://github.com/NapNeko/NapCatQQ) 部署 NapCatQQ（若希望使用一键联合启动脚本，可将其放在项目根目录的 `napcat/` 下并提供 `napcat/start-napcat.ps1`）。
-2. 在 NapCatQQ WebUI（默认 `http://127.0.0.1:6099/webui`）中开启：
+> **协议端现状提示**：`NapNeko/NapCatQQ` 原仓库已进入 **`Ending` 停更状态**（已清空官方 Releases），本仓库不包含任何协议端本体，请**自备 NapCatQQ** 或**任意标准 OneBot v11 协议端**。
+
+1. 启动你自备的协议端（若自备 NapCatQQ 且希望使用一键联合启动脚本，可将其放在项目根目录的 `napcat/` 下并提供 `napcat/start-napcat.ps1`）。
+2. 在协议端配置中开启：
    - **WebSocket 服务端**：`127.0.0.1:13001`（对应 `onebot.mode: "forward-ws"`，也支持切换为 `reverse-ws`）
-   - **HTTP 服务端**：`127.0.0.1:13000`（用于状态探测等辅助接口）
-3. 扫码登录你的机器人 QQ 账号即可。
+   - **HTTP 服务端**：`127.0.0.1:13000`（可选，用于兜底调用接口）
+3. 登录你的机器人 QQ 账号即可。
+
+> **使用非 NapCatQQ 标准 OneBot v11 协议端的兼容性说明（尚未实机验证）**：
+> 本项目核心收发、引用、合并转发（`get_forward_msg`）、识图、B 站解析、世界书与本地斗图均基于 OneBot v11 标准接口，**但目前仅在 NapCatQQ 上做过真实联调，其他协议端尚未实机验证**。改用其他标准 OneBot v11 协议端时，以下功能不可用或可能受限：
+> - **不可用（NapCat 专属）**：Antigravity Hub 内的「启动 NapCatQQ / 打开扫码登录（`:6099`）/ 切号重启」快捷按钮、`start-agyqq.ps1 -WithNapCat` 及侧边栏自动拉起 NapCat（需自行启动外部协议端，并在 `config.json` 中对好 `onebot.wsUrl` / `reverse-ws` 与 `accessToken`；控制台顶部 `NapCat WebUI` 提示灯可忽略，只要 OneBot 连接变绿即可）。
+> - **可能不可用（不支持时会自动跳过，不影响主流程）**：与机器人 QQ 云端收藏表情双向同步（依赖 `fetch_custom_face_detail` / `fetch_custom_face` / `add_custom_face` / `set_custom_face_desc` 非标准扩展接口；本地偷图、`/存表情`、`/表情库` 与自动斗图照常工作）。
+> - **视协议端能力而定**：语音发送（`record` + `base64://` WAV）依赖协议端具备 WAV→SILK 转码能力，若不支持可能无法发送语音条（纯文字与图片不受影响）。
 
 #### 第 3 步（可选）：手动启用 GPT-SoVITS v5 六情感语音
 
