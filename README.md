@@ -373,8 +373,9 @@ npm run probe:tts
 
 ## 鸣谢 / Acknowledgments
 
-本项目的实现离不开以下优秀的开源项目、协议生态与社区资料，特此致谢：
+本项目的实现离不开以下创作者、开源项目、协议生态与社区资料，特此致谢：
 
+- **[封鸣-幽兰](https://space.bilibili.com/383921074)**（Bilibili UP 主） — 本项目 UI 与部分功能设计的灵感来源。
 - **[Google Antigravity 2.0 (AGY 2)](https://antigravity.google/)** & **Agent Client Protocol (ACP)** & **Model Context Protocol (MCP Apps)** — 提供强大的本机持久化多模态 Agent 运行时与桌面端侧边栏插件扩展能力。
 - **[NapCatQQ](https://github.com/NapNeko/NapCatQQ)** & **[OneBot v11](https://github.com/botuniverse/onebot-11)** — 提供稳定、现代的 QQ 协议接入层与标准化事件/接口规范。
 - **[GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)**（`RVC-Boss/GPT-SoVITS`） — 提供高质量、可本地部署的少样本情感语音合成引擎（v5）。
