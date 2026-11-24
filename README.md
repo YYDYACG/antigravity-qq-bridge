@@ -1,12 +1,13 @@
 # Antigravity QQ Bridge
 
 <p align="center">
-  <strong>直接复用本机 Google Antigravity 的跨端 QQ AI 伴侣桥接系统</strong><br/>
+  <strong>直接复用本机 Google Antigravity（AGY 2 / CLI）的跨端 QQ AI 伴侣桥接系统</strong><br/>
   持久化 <code>agy acp --stdio</code> 双通道大脑 · 可调上下文预算与无感记忆压缩 · 原生视觉 / GIF 分镜 / 合并转发 / B站热评解析 · 三层活体世界书与梗百科 · GPT-SoVITS v5 情感语音 · Antigravity Hub 可视化管控台
 </p>
 
 <p align="center">
   <img alt="Node.js >= 22.13" src="https://img.shields.io/badge/Node.js-%3E%3D22.13.0-339933?logo=node.js&logoColor=white" />
+  <img alt="Antigravity 2.0" src="https://img.shields.io/badge/Host-Antigravity%202.0%20(AGY%202)-6D5DFC" />
   <img alt="OneBot v11" src="https://img.shields.io/badge/Protocol-OneBot%20v11-12B7F5" />
   <img alt="Runtime Deps: 1" src="https://img.shields.io/badge/Runtime%20Deps-1%20(ws)-blue" />
   <img alt="License MIT" src="https://img.shields.io/badge/License-MIT-green" />
@@ -21,8 +22,11 @@
 - [核心功能特性](#核心功能特性)
 - [环境要求](#环境要求)
 - [安装与配置](#安装与配置)
+  - [方式一：让 AI Agent 自动代装（推荐）](#方式一让-ai-agent-自动代装推荐)
+  - [方式二：一键安装程序（交互 / 参数化）](#方式二一键安装程序交互--参数化)
+  - [方式三：纯手动安装步骤](#方式三纯手动安装步骤)
 - [启动方式](#启动方式)
-- [Antigravity 侧边栏插件](#antigravity-侧边栏插件)
+- [Antigravity 2.0 侧边栏插件](#antigravity-20-侧边栏插件)
 - [常用 QQ 指令](#常用-qq-指令)
 - [项目结构](#项目结构)
 - [测试与诊断](#测试与诊断)
@@ -39,7 +43,7 @@
 - **零额外商业 API 订阅依赖**：直接常驻调用你本机已登录的 **Google Antigravity CLI**（`agy acp --stdio` 持久化会话），开机握手一次即可长连接复用，彻底告别逐条冷启动延迟。
 - **极致轻量与透明可控**：基于 Node.js `>=22.13.0` 内置 `node:sqlite` 与原生模块，整个核心**仅有 1 个外部运行时依赖（`ws`）**，所有数据、会话记忆与配置全部保存在你自己的电脑本地。
 - **既懂群聊氛围又守安全底线**：私聊主人通道可按需调用本机工具协助开发，群聊通道强制运行于独立 `--sandbox` 沙盒并执行 4 层权限硬拦截；同时兼顾自然群聊接话节奏、防风控合流、友商机器人防互刷与全场景看图玩梗。
-- **开箱即用的可视化控制台（Antigravity Hub）**：所有模型、人格、上下文上限、权限白名单、声线参数、世界书/梗库、表情仓库与免连 QQ 演练场都支持浏览器或 Antigravity 侧边栏实时热更新。
+- **专为 Antigravity 2.0（AGY 2）打造的可视化控制台**：所有模型、人格、上下文上限、权限白名单、声线参数、世界书/梗库、表情仓库与免连 QQ 演练场都支持浏览器或 **Antigravity 2.0 侧边栏 / 辅助面板**实时热更新。
 
 ---
 
@@ -59,7 +63,7 @@ flowchart LR
     Engine <--> GroupACP["Group ACP Worker (--sandbox 群聊沙盒模型)"]
 
     Hub["Antigravity Hub WebUI (:3200)"] <-->|"REST API / SSE"| Engine
-    Plugin["Antigravity 侧边栏插件 (agyqq-hub MCP App)"] <-->|"iframe + openLink 桥接"| Hub
+    Plugin["Antigravity 2.0 侧边栏插件 (agyqq-hub MCP App)"] <-->|"iframe + openLink 桥接"| Hub
 ```
 
 ---
@@ -95,9 +99,9 @@ flowchart LR
 - **双轨语音极速体验**：文字与表情包立即发出，语音在后台串行合成后无感补发，彻底消除等待焦虑；完整支持 6 情感参考音频、13 项 v5 推理参数热调、上线/切权重自动预热 CUDA 与 `SHA-256` 秒回缓存。
 - **5 维表情包卡片库（`data/stickers.db`）**：支持自动同步 QQ 收藏表情、视觉鉴图自动筛选、按需读取目录手册 `data/sticker-catalog.md`（平时 0 上下文占用）与 `2-gram` 中文检索兜底。
 
-### 7. Antigravity Hub 管控台 & 侧边栏插件
+### 7. Antigravity Hub 管控台 & Antigravity 2.0 侧边栏插件
 - 8 大功能页签覆盖全链路：总览与 NapCatQQ 扫码登录、模型与人格（含上下文上限滑块）、GPT-SoVITS 声线试听、群聊权限矩阵、Token 吞吐与上下文压缩进度、表情包仓库、活体世界书与 L2 梗百科、免连 QQ 端到端演练场。
-- 附带 **Antigravity IDE 侧边栏插件**（`plugins/agyqq-hub`）：一键在侧边栏拉起 Hub、自动守护本地服务，且在侧边栏内可直接点击「打开扫码登录」调起系统浏览器访问本机 NapCatQQ WebUI。
+- 仓库内置完整的 **Antigravity 2.0（AGY 2）侧边栏 MCP App 插件源码**（[`plugins/agyqq-hub`](plugins/agyqq-hub/README.md)）：支持左侧全局整页（`global`）与右侧辅助面板（`aux_pane`）两种入口，一键自动检测并拉起本地服务，并在面板内直接点击「打开扫码登录」唤起本机浏览器。
 
 ---
 
@@ -106,70 +110,117 @@ flowchart LR
 | 组件 | 要求 | 说明 |
 | :--- | :--- | :--- |
 | **Node.js** | `>= 22.13.0`（必选） | 使用内置 `node:sqlite` 与 `node:test`，外部运行时依赖仅 `ws` |
-| **Google Antigravity CLI (`agy`)** | 已安装并完成账号登录（必选） | 提供 `agy acp --stdio` 持久化会话通道 |
+| **Google Antigravity 2.0 / CLI (`agy`)** | 已安装并完成账号登录（必选） | 提供 `agy acp --stdio` 持久化会话通道；AGY 2 桌面端还支持侧边栏插件 |
 | **OneBot v11 协议端** | 推荐 [NapCatQQ](https://github.com/NapNeko/NapCatQQ)（必选） | 可独立部署或放入本仓库 `napcat/` 目录（已加入 `.gitignore`） |
 | **FFmpeg** | 可选，强烈推荐 | 用于动态 GIF 时序分镜；加入系统 `PATH` 或配置 `vision.ffmpegPath` |
 | **GPT-SoVITS v5** | 可选 | 需要六情感真人语音合成时部署，独立监听 `19880`（可自动探测备选端口） |
-| **L2 梗百科词库 (`data/memes.db`)** | 可选 | 16MB 离线词库，未随仓库分发，按需从 `dsh-memewiki` 放入即自动启用 |
+| **L2 梗百科词库 (`data/memes.db`)** | 可选 | 离线公共梗词库，未随仓库分发，可通过安装程序一键同步或自行放入 |
 
-> **平台说明**：核心 Node.js 服务、测试套件与 Hub WebUI 跨平台支持 Windows / macOS / Linux；仓库根目录的一键批处理/PowerShell 启动脚本（`.bat` / `.ps1`）面向 Windows，macOS / Linux 用户可直接使用 `npm start` 启动核心服务。
+> **平台说明**：核心 Node.js 服务、一键安装脚本 `scripts/install.mjs`、测试套件与 Hub WebUI 跨平台支持 Windows / macOS / Linux；根目录的 `.bat` / `.ps1` 快捷脚本面向 Windows，macOS / Linux 用户可直接运行 `node scripts/install.mjs` 与 `npm start`。
 
 ---
 
 ## 安装与配置
 
-### 第 1 步：克隆仓库并安装依赖
+### 方式一：让 AI Agent 自动代装（推荐）
+
+如果你正在使用 **Antigravity 2.0（AGY 2）**（或其他具备终端能力的 AI Agent），直接复制下面这段提示词发给它，即可全程自动检查环境、安装依赖、生成配置并装好 AGY 2 侧边栏插件：
+
+```text
+请帮我把当前仓库（或先克隆 https://github.com/<你的用户名>/<你的仓库名>.git 到本地目录）的 Antigravity QQ Bridge 完整安装并初始化好：
+1. 先检查本机 Node.js（需 >= 22.13.0）、agy CLI、FFmpeg 以及是否已有 NapCatQQ / GPT-SoVITS v5 环境，并把检测结果告诉我。
+2. 安装前先问我这几个必要信息：我的主人 QQ 号、要开启的测试群号、伴侣名字，以及是否需要顺便安装 Antigravity 2.0 (AGY 2) 侧边栏插件、GPT-SoVITS v5 语音模板或 L2 离线梗百科。
+3. 拿到我的回答后，直接运行内置安装程序 `node scripts/install.mjs --yes ...`（按我选的开关传入 `--owner-qq`、`--group-id`、`--persona-name`、`--with-plugin`、`--with-sovits`、`--with-memewiki` 等参数）；如果本机已有 `config.json`，务必保留原配置不要覆盖。
+4. 安装完成后跑一次 `npm test` 验证环境无误，并告诉我 Antigravity Hub 的访问地址、怎么连接 NapCatQQ 扫码登录，以及如何启动服务。
+```
+
+---
+
+### 方式二：一键安装程序（交互 / 参数化）
+
+项目内置了跨平台一键安装程序 [`scripts/install.mjs`](scripts/install.mjs)（自动完成环境体检、安装 `ws`、生成不覆盖已有配置的 `config.json` 与随机 `hub.token`、按需初始化 GPT-SoVITS v5 / L2 梗百科，以及**自动复制、写入 `AGYQQ_BRIDGE_DIR` 并打包 Antigravity 2.0 侧边栏插件**）：
 
 ```powershell
-git clone https://github.com/<你的用户名>/antigravity-qq-bridge.git
+# 1. 克隆仓库
+git clone https://github.com/<你的用户名>/<你的仓库名>.git
+cd antigravity-qq-bridge
+
+# 2. 运行交互式一键安装向导
+# Windows：直接双击 install.bat，或在终端运行：
+.\install.ps1
+
+# macOS / Linux / 跨平台通用：
+node scripts/install.mjs
+# 或（已安装依赖后）
+npm run setup
+```
+
+**常用非交互一键参数示例**（适合脚本化部署或直接一行搞定）：
+
+```powershell
+# 默认安装 + 填好主人 QQ / 群白名单 + 自动安装并打包 AGY 2 侧边栏插件
+node scripts/install.mjs --yes --owner-qq 123456789 --group-id 987654321 --with-plugin
+
+# 先演练看看会改哪些文件（不实际写入）
+node scripts/install.mjs --yes --with-plugin --dry-run
+
+# 查看全部可用参数（含 --persona-name / --context-budget / --sovits-root / --with-memewiki 等）
+node scripts/install.mjs --help
+```
+
+> 安装程序默认**永不覆盖已存在的 `config.json`**（若需重置模板可显式传入 `--force-config`）。装完后仅需确保你的 OneBot v11 协议端（NapCatQQ）已按下方端口配置并扫码登录即可使用。
+
+---
+
+### 方式三：纯手动安装步骤
+
+如果你想每一步自己掌控（不运行 `scripts/install.mjs`），可以按以下步骤手动完成：
+
+#### 第 1 步：安装核心依赖并初始化主配置
+
+```powershell
+git clone https://github.com/<你的用户名>/<你的仓库名>.git
 cd antigravity-qq-bridge
 npm install
-```
 
-### 第 2 步：初始化主配置文件
-
-```powershell
 # Windows PowerShell
 Copy-Item config.example.json config.json
-
 # macOS / Linux
-cp config.example.json config.json
+# cp config.example.json config.json
 ```
 
-> `config.json` 已加入 `.gitignore`，不会提交到 Git。建议先通过 `npm start` 启动后在 **Antigravity Hub** 网页可视化编辑，或直接修改 `config.json` 中最关键的几项：
-> - `guard.ownerUsers`：填入主人的 QQ 号数组（例如 `["123456789"]`）
-> - `guard.allowGroups`：填入允许响应的测试群号白名单
-> - `acp.ownerModel` / `acp.groupModel`：按本机 `agy` 可用模型选择私聊与群聊模型
-> - `acp.contextBudgetTokens`：默认 `256000`（支持 `16000`–`2097152`，填 `0` 表示不限）
-> - `onebot.wsUrl` / `onebot.httpUrl` / `onebot.accessToken`：与你的 NapCatQQ OneBot v11 端口和鉴权一致
+编辑 `config.json` 中最关键的几项（`config.json` 已加入 `.gitignore`，不会提交到 Git；也可启动后直接在 Antigravity Hub 网页修改）：
+- `guard.ownerUsers`：主人 QQ 号数组（例如 `["123456789"]`）
+- `guard.allowGroups`：允许响应的测试群号白名单
+- `acp.ownerModel` / `acp.groupModel`：按本机 `agy` 可用模型选择私聊与群聊模型
+- `acp.contextBudgetTokens`：默认 `256000`（支持 `16000`–`2097152`，填 `0` 表示不限）
+- `onebot.wsUrl` / `onebot.httpUrl` / `onebot.accessToken`：与你的 NapCatQQ OneBot v11 端口和鉴权一致
 
-### 第 3 步：配置 OneBot v11（NapCatQQ）
+#### 第 2 步：配置 OneBot v11（NapCatQQ）
 
 1. 按 [NapCatQQ 官方文档](https://github.com/NapNeko/NapCatQQ) 部署 NapCatQQ（若希望使用一键联合启动脚本，可将其放在项目根目录的 `napcat/` 下并提供 `napcat/start-napcat.ps1`）。
 2. 在 NapCatQQ WebUI（默认 `http://127.0.0.1:6099/webui`）中开启：
    - **WebSocket 服务端**：`127.0.0.1:13001`（对应 `onebot.mode: "forward-ws"`，也支持切换为 `reverse-ws`）
-   - **HTTP 服务端**：`127.0.0.1:13000`（用于查询状态等辅助接口）
+   - **HTTP 服务端**：`127.0.0.1:13000`（用于状态探测等辅助接口）
 3. 扫码登录你的机器人 QQ 账号即可。
 
-### 第 4 步（可选）：启用 GPT-SoVITS v5 六情感语音
+#### 第 3 步（可选）：手动启用 GPT-SoVITS v5 六情感语音
 
 1. 复制推理配置模板并填入你本机的 GPT-SoVITS v5 底模路径：
    ```powershell
    Copy-Item tts_infer_v5dev.example.yaml tts_infer_v5dev.yaml
    ```
 2. 在 `config.json` 中设置 `tts.sovitsRoot`（指向你本机 GPT-SoVITS v5 目录，也可通过环境变量 `GPT_SOVITS_ROOT` 指定）。
-3. 将 6 段情感参考音频放入项目根目录的 `audio_clip/`（默认命名：`平静.wav`、`温柔.wav`、`开心.wav`、`调皮.wav`、`委屈.wav`、`疑问.wav`），并在 `config.json` 或 Hub 声线页填写对应的 `promptText`。
-4. 若暂时不需要语音或希望释放显存，可在 Hub「声线与语音」页关闭 TTS 或直接不启动 SoVITS 后端，桥接核心会自动纯文字流畅运行。
+3. 创建 `audio_clip/` 目录，放入 6 段情感参考音频（默认命名：`平静.wav`、`温柔.wav`、`开心.wav`、`调皮.wav`、`委屈.wav`、`疑问.wav`），并在 `config.json` 或 Hub 声线页填写对应台词 `promptText`。
+4. 若不需要语音或需要释放显存，可在 Hub「声线与语音」页关闭 TTS 或不启动 SoVITS 后端，桥接核心会自动纯文字运行。
 
-### 第 5 步（可选）：启用 L2 6,792+ 离线梗百科
+#### 第 4 步（可选）：手动启用 L2 6,792+ 离线梗百科
 
-仓库本身不包含二进制词库文件。启用步骤：
+仓库不包含二进制词库文件。你可以从 [thawline/dsh-memewiki](https://github.com/thawline/dsh-memewiki) 放入 `data/memes.db`，或直接运行增量同步脚本从 `cnmeme.wiki` 公开接口拉取：
 
-1. 从 [thawline/dsh-memewiki](https://github.com/thawline/dsh-memewiki) 获取 `memes.db`，放到本项目 `data/memes.db`（或直接运行下方命令全量/增量拉取）。
-2. 后续可随时在 Hub 的「世界书与梗库」页点击**一键增量同步**，或在终端执行：
-   ```powershell
-   node scripts/sync-cnmeme.mjs --no-existing
-   ```
+```powershell
+node scripts/sync-cnmeme.mjs --no-existing
+```
 
 ---
 
@@ -205,30 +256,35 @@ npm start
 
 ### 首次访问 Antigravity Hub 控制台
 
-- 首次启动会自动生成随机访问令牌并写入 `data/hub-token.txt`（同时打印在终端日志中）；你也可以在 `config.json` 的 `hub.token` 中固定自己的本地令牌。
+- 首次安装或启动会自动生成随机访问令牌并写入 `data/hub-token.txt`（同时打印在终端日志中）；也可以在 `config.json` 的 `hub.token` 中固定本地令牌。
 - 在浏览器打开：`http://127.0.0.1:3200/?token=<你的Token>`
-- 进入后先到 **「群聊与权限防护」** 添加主人 QQ（`ownerUsers`）与允许响应的群号（`allowGroups`），再到 **「总览」** 点击「打开扫码登录」确认 NapCatQQ 在线即可开始聊天。
+- 进入后先到 **「群聊与权限防护」** 确认主人 QQ（`ownerUsers`）与允许响应的群号（`allowGroups`），再到 **「总览」** 点击「打开扫码登录」确认 NapCatQQ 在线即可开始聊天。
 
 ---
 
-## Antigravity 侧边栏插件
+## Antigravity 2.0 侧边栏插件
 
-仓库内置了完整的 Antigravity IDE 侧边栏 MCP App 插件源码（[`plugins/agyqq-hub`](plugins/agyqq-hub/README.md)）：
+仓库内置了完整的 **Antigravity 2.0（AGY 2）侧边栏 MCP App 插件源码**（[`plugins/agyqq-hub`](plugins/agyqq-hub/README.md)）。
+
+- **推荐方式**：直接运行 `node scripts/install.mjs --yes --with-plugin`（一键复制源码、自动写入当前项目路径 `AGYQQ_BRIDGE_DIR`、安装依赖并打包 `dist/app.html`）。
+- **手动安装**：
 
 ```powershell
-# 1. 复制插件到 Antigravity 插件目录（Windows 默认路径）
+# 1. 复制插件到 Antigravity 2.0 插件目录（Windows 默认路径）
 $Target = "$env:USERPROFILE\.gemini\config\plugins\agyqq-hub"
 Copy-Item -Recurse -Force "plugins\agyqq-hub" $Target
 
-# 2. 安装依赖并打包前端资源
+# 2. 在 $Target\mcp_config.json 中配置 env.AGYQQ_BRIDGE_DIR 指向你的主项目绝对路径
+
+# 3. 安装构建依赖并打包前端资源
 Set-Location $Target
 npm install
 npm run build
 ```
 
-如果主项目目录与插件默认相对路径不同，可在该插件的 `mcp_config.json` 中为 `env.AGYQQ_BRIDGE_DIR` 填入你的项目根目录路径。重启或重载插件后，即可在 Antigravity 侧边栏直接打开控制台，并支持：
-- 自动检测并后台拉起未运行的 Bridge / NapCatQQ / GPT-SoVITS v5；
-- 在侧边栏中直接点击「打开扫码登录」调起系统浏览器打开 NapCatQQ WebUI（通过 MCP App `openLink` 桥接，并带本机 `localhost` 回退兜底）。
+在 **Antigravity 2.0** 中重载插件或重新打开窗口后，即可从左侧 **Plugins** 整页入口（`global`）或右侧 **Auxiliary Pane** 辅助面板（`aux_pane`）直接打开 **Antigravity Hub**：
+- 点击即自动检测并后台拉起未运行的 Bridge / NapCatQQ / GPT-SoVITS v5；
+- 在侧边栏内可直接点击「打开扫码登录」唤起本机浏览器打开 NapCatQQ WebUI（优先走 AGY 2 原生 `openLink` 桥接，并内置仅限 `127.0.0.1` / `localhost` 的本机后端兜底）。
 
 ---
 
@@ -267,12 +323,17 @@ npm run build
 │   ├── stickers/                # 5 维表情包卡片库、SQLite 2-gram 索引与视觉鉴图
 │   ├── tts/                     # GPT-SoVITS v5 客户端、13 参数透传、情绪解析与 SHA-256 缓存
 │   └── web/                     # Antigravity Hub 本地服务端与前端 SPA（index.html / app.js / styles.css）
-├── plugins/agyqq-hub/           # Google Antigravity 侧边栏 MCP App 插件源码
-├── scripts/                     # ACP / TTS 探针与 cnmeme.wiki 增量同步脚本
+├── plugins/agyqq-hub/           # Google Antigravity 2.0 (AGY 2) 侧边栏 MCP App 插件源码
+├── scripts/
+│   ├── install.mjs              # 跨平台一键安装与初始化程序（交互 + 非交互 CLI）
+│   ├── probe-acp.mjs            # 本机 agy acp 握手与多模态探针
+│   ├── probe-tts.mjs            # 本机 GPT-SoVITS v5 连通性与缓存探针
+│   └── sync-cnmeme.mjs          # L2 公共梗百科 0-Token 增量同步脚本
 ├── tests/                       # 单元测试与真实 ACP E2E 集成测试
+├── install.bat / install.ps1    # Windows 双击 / PowerShell 一键安装入口
+├── start-agyqq.ps1 / .bat       # Windows 一键启动与停止脚本
 ├── config.example.json          # 脱敏主配置模板（实际运行配置 config.json 已忽略）
 ├── tts_infer_v5dev.example.yaml # GPT-SoVITS v5 推理配置模板
-├── start-agyqq.ps1 / .bat       # Windows 一键启动与停止脚本
 ├── CHANGELOG.md                 # 版本更新日志
 ├── THIRD_PARTY_NOTICES.md       # 第三方组件与词库归属声明
 └── LICENSE                      # MIT License
@@ -285,8 +346,8 @@ npm run build
 ## 测试与诊断
 
 ```powershell
-# 运行全部单元测试（权限隔离、防风控合流、表情库、L1 世界书、L2 梗百科、上下文预算与压缩、
-# TTS 缓存与异步补发、B 站解析、合并转发与旁听补图、GIF 分镜、OneBot 客户端、Hub API）
+# 运行全部单元测试（安全隔离、防风控合流、表情库、L1 世界书、L2 梗百科、上下文预算与压缩、
+# TTS 缓存与异步补发、B 站解析、合并转发与旁听补图、GIF 分镜、OneBot、Hub API、一键安装程序）
 npm test
 
 # 运行真实本机 agy acp --stdio 端到端集成测试
@@ -314,7 +375,7 @@ npm run probe:tts
 
 本项目的实现离不开以下优秀的开源项目、协议生态与社区资料，特此致谢：
 
-- **[Google Antigravity](https://antigravity.google/)** & **Agent Client Protocol (ACP)** & **Model Context Protocol (MCP Apps)** — 提供强大的本机持久化多模态 Agent 运行时与 IDE 侧边栏扩展能力。
+- **[Google Antigravity 2.0 (AGY 2)](https://antigravity.google/)** & **Agent Client Protocol (ACP)** & **Model Context Protocol (MCP Apps)** — 提供强大的本机持久化多模态 Agent 运行时与桌面端侧边栏插件扩展能力。
 - **[NapCatQQ](https://github.com/NapNeko/NapCatQQ)** & **[OneBot v11](https://github.com/botuniverse/onebot-11)** — 提供稳定、现代的 QQ 协议接入层与标准化事件/接口规范。
 - **[GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS)**（`RVC-Boss/GPT-SoVITS`） — 提供高质量、可本地部署的少样本情感语音合成引擎（v5）。
 - **[dsh-memewiki](https://github.com/thawline/dsh-memewiki)**（MIT License）、`astrbot_plugin_memewiki`（by `in1t1a1`）与 **[cnmeme.wiki](https://cnmeme.wiki)** — 为 L2 离线梗百科结构设计、词库检索体验与增量同步方案提供灵感与公共数据支持（详见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)）。

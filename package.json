@@ -8,8 +8,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "setup": "node scripts/install.mjs",
     "start": "node src/index.js",
-    "test": "node --test tests/owner-guard.test.mjs tests/merge-and-rate.test.mjs tests/sticker-2gram.test.mjs tests/lorebook.test.mjs tests/memewiki.test.mjs tests/context-compact.test.mjs tests/tts-cache.test.mjs tests/onebot-parser.test.mjs tests/bilibili-resolver.test.mjs tests/vision-gif.test.mjs tests/hub-and-onebot.test.mjs",
+    "test": "node --test tests/owner-guard.test.mjs tests/merge-and-rate.test.mjs tests/sticker-2gram.test.mjs tests/lorebook.test.mjs tests/memewiki.test.mjs tests/context-compact.test.mjs tests/tts-cache.test.mjs tests/onebot-parser.test.mjs tests/bilibili-resolver.test.mjs tests/vision-gif.test.mjs tests/hub-and-onebot.test.mjs tests/installer.test.mjs",
     "test:e2e": "node --test tests/acp-e2e.test.mjs",
     "test:all": "npm test && npm run test:e2e",
     "probe:acp": "node scripts/probe-acp.mjs",
