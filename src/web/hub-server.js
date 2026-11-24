@@ -1,7 +1,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { detectImageMime } from '../media/vision-fetcher.js';
 
@@ -13,32 +13,33 @@ export function validateLocalBrowserUrl(rawUrl) {
   return u.toString();
 }
 
-function openLocalUrlInBrowser(rawUrl) {
+async function openLocalUrlInBrowser(rawUrl) {
   const target = validateLocalBrowserUrl(rawUrl);
-  let child;
   if (process.platform === 'win32') {
-    child = spawn(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-WindowStyle',
-        'Hidden',
-        '-Command',
-        'Start-Process -FilePath $env:AGYQQ_OPEN_URL'
-      ],
-      {
-        detached: true,
-        windowsHide: true,
-        stdio: 'ignore',
-        env: { ...process.env, AGYQQ_OPEN_URL: target }
-      }
-    );
-  } else if (process.platform === 'darwin') {
-    child = spawn('open', [target], { detached: true, stdio: 'ignore' });
-  } else {
-    child = spawn('xdg-open', [target], { detached: true, stdio: 'ignore' });
+    // Must use non-detached execFile (piped stdio): PowerShell silently exits without running under detached+windowsHide+stdio:'ignore'
+    await new Promise((resolve, reject) => {
+      execFile(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-WindowStyle',
+          'Hidden',
+          '-Command',
+          'Start-Process -FilePath $env:AGYQQ_OPEN_URL'
+        ],
+        {
+          windowsHide: true,
+          timeout: 8000,
+          env: { ...process.env, AGYQQ_OPEN_URL: target }
+        },
+        (err) => (err ? reject(err) : resolve())
+      );
+    });
+    return target;
   }
+  const cmd = process.platform === 'darwin' ? 'open' : 'xdg-open';
+  const child = spawn(cmd, [target], { detached: true, stdio: 'ignore' });
   child.unref();
   return target;
 }
@@ -371,7 +372,8 @@ export class HubServer {
     if (pathname === '/api/napcat/open-webui' && method === 'POST') {
       const st = await this.engine.napcatManager.probeStatus();
       const safeUrl = validateLocalBrowserUrl(st?.webuiUrl || 'http://127.0.0.1:6099/webui');
-      const targetUrl = this.openUrlFn(safeUrl);
+      const targetUrl = await this.openUrlFn(safeUrl);
+      this.engine._log('info', 'hub', `已通过本机默认浏览器拉起 NapCat WebUI: ${targetUrl}`);
       sendJson(res, 200, { ok: true, data: { url: targetUrl, webuiOnline: Boolean(st?.webuiOnline) } });
       return;
     }

@@ -142,8 +142,7 @@ window.addEventListener('message', (event) => {
       reply(false);
     }
   };
-  const caps = app.getHostCapabilities?.();
-  if (caps?.openLinks) {
+  if (typeof app.openLink === 'function') {
     app
       .openLink({ url: data.url })
       .then((res) => {
