@@ -1,4 +1,4 @@
-# Antigravity QQ Bridge
+<h1 align="center">Antigravity QQ Bridge</h1>
 
 <p align="center">
   <strong>直接复用本机 Google Antigravity（AGY 2 / CLI）的跨端 QQ AI 伴侣桥接系统</strong><br/>
@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img alt="Node.js >= 22.13" src="https://img.shields.io/badge/Node.js-%3E%3D22.13.0-339933?logo=node.js&logoColor=white" />
+  <img alt="Node.js 22.13+" src="https://img.shields.io/badge/Node.js-%3E%3D22.13.0-339933?logo=node.js&logoColor=white" />
   <img alt="Antigravity 2.0" src="https://img.shields.io/badge/Host-Antigravity%202.0%20(AGY%202)-6D5DFC" />
   <img alt="OneBot v11" src="https://img.shields.io/badge/Protocol-OneBot%20v11-12B7F5" />
   <img alt="Runtime Deps: 1" src="https://img.shields.io/badge/Runtime%20Deps-1%20(ws)-blue" />
